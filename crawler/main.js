@@ -1,6 +1,8 @@
 // Dependencies
 var Horseman = require("node-horseman");
 var fs = require('fs');
+var config = require('./config.json');
+var parse = require('./modules/parse.js');
 
 log("Initializing horseman crawler...");
 
@@ -9,9 +11,10 @@ var crawler = new Horseman();
 
 // Grab the interval from the cli otherwise choose default val of 4 seconds.
 var interval = process.argv[2] ? process.argv[2] : 4000;
+
 // Set a recurring crawl.
 setInterval(function(){
-  var routes = [1, 2, 3, 4, 7, 8, 9];
+  var routes = config.routes;
   runCrawl(routes);
 }, interval);
 
@@ -151,7 +154,7 @@ function parseBusesInfo(rawText){
 
     var subNameAndTimeComponent = components[i].split(", ");
 
-    organizedComponents.push(new Bus(subNameAndTimeComponent[0], subNameAndTimeComponent[1], null));
+    organizedComponents.push(new Bus(subNameAndTimeComponent[0], parse.timeSince(subNameAndTimeComponent[1]), null));
 
   }
 
