@@ -9,12 +9,14 @@ log("Initializing horseman crawler...");
 // Initialize the crawler.
 var crawler = new Horseman();
 
+log("Horseman loaded.");
+
 // Grab the interval from the cli otherwise choose default val of 4 seconds.
 var interval = process.argv[2] ? process.argv[2] : 4000;
 
 // Set a recurring crawl.
 setInterval(function(){
-  var routes = config.routes;
+  var routes = arrCopy(config.routes);
   runCrawl(routes);
 }, interval);
 
@@ -32,7 +34,7 @@ function runCrawl(routeNumArray){
     log("ROUTE: " + route);
     getRouteInfo(route, function(routeData){
 
-      log(routeData);
+      console.log(routeData);
 
       var logCache = require("./log.json");
       log("ROUTE: " + route);
@@ -66,6 +68,8 @@ function getRouteInfo(routeNumber, callback){
     // Grab the bus information.
     crawler.text("i").then(function(rawBusInfo){
 
+      console.log(rawBusInfo);
+
       // Parse the raw bus string info and save to the variable.
       busInfo = parseBusesInfo(rawBusInfo);
 
@@ -84,10 +88,11 @@ function BusLogEntry(date, buses){
 }
 
 // Bus object constructor.
-function Bus(lastStop, timeSince, atStop){
+function Bus(lastStop, timeSince, atStop, raw){
   this.lastStop = lastStop;
   this.timeSince = timeSince;
   this.atStop = atStop;
+  if (raw) this.raw = raw; // Used for debugging / accuracy checking.
 }
 
 // Takes in the raw string from the site and parses into a proper date.
@@ -142,6 +147,9 @@ function reverseDate(input){
 // Receives the raw bus strring info and parses it to a useful object.
 function parseBusesInfo(rawText){
 
+  // By default the bus is not at the stop.
+  var atStopBool = false;
+
   var components = rawText.split("...");
   var organizedComponents = [];
 
@@ -152,9 +160,57 @@ function parseBusesInfo(rawText){
     // Skip current iteration if null or empty.
     if (!components[i]) continue;
 
-    var subNameAndTimeComponent = components[i].split(", ");
+    var subNameAndTimeComponent;
 
-    organizedComponents.push(new Bus(subNameAndTimeComponent[0], parse.timeSince(subNameAndTimeComponent[1]), null));
+    console.log("Component: " + components[i]);
+
+    if (components[i].indexOf(", ") !== -1){
+
+      console.log("comma detected.");
+
+      subNameAndTimeComponent = components[i].split(", ");
+
+      console.log(subNameAndTimeComponent);
+
+      // Remove the 'bus stop' string.
+      subNameAndTimeComponent[0] = filterOutWordFromString(subNameAndTimeComponent[0], " Bus Stop");
+
+      console.log("Filter out 'Bus Stop'");
+      console.log(subNameAndTimeComponent);
+
+    }
+    else
+      subNameAndTimeComponent = components[i].split(" Bus Stop ");
+
+    // If component does not contain 'leaving', then we set atStopBool to true,
+    // and prepare the proper name.
+    if (subNameAndTimeComponent[0].indexOf("Leaving ") == -1) {
+      atStopBool = true;
+    } else {
+      // If the component does contain the word 'Leaving ', then we remove it.
+      subNameAndTimeComponent[0] = filterOutWordFromString(subNameAndTimeComponent[0], "Leaving ");
+    }
+
+    // Check to see for presence of delimiting comma, if not separate manually based
+    // off 'Bus Stop' string.
+    // if (subNameAndTimeComponent[0].indexOf("ago") !== -1){
+    //   subNameAndTimeComponent[0] = filterOutWordFromString(subNameAndTimeComponent[0], " over an hour ago");
+    //   subNameAndTimeComponent[1] = subNameAndTimeComponent[0].split("Bus Stop")[1]; // Signals a timeout ping.
+    // }
+
+    console.log(subNameAndTimeComponent);
+
+    var busStopName = parse.resolveBusStopName(subNameAndTimeComponent[0]);
+    var timeSince = parse.timeSince(subNameAndTimeComponent[1]);
+
+    organizedComponents.push(
+      new Bus(
+        busStopName, // Bus stop abbr. name
+        timeSince,   // Time since last stop ping.
+        atStopBool,  // Is the bus currently at the stop?
+        components[i] // Used for reference / debugging.
+      )
+    );
 
   }
 
@@ -163,6 +219,25 @@ function parseBusesInfo(rawText){
 
 }
 
+// Utility functions (To be separated).
+function filterOutWordFromString(source, wordToRemove){
+
+  // Return the source if the wordToRemove not existant in the string.
+  if (source.indexOf(wordToRemove) == -1) return source;
+
+  return source.replace(wordToRemove, "");
+}
+
 function log(message){
   console.log("[BUS CRAWLER] "+message);
+}
+
+function arrCopy(arr){
+  var output = [];
+
+  for (var i = 0; i < arr.length; i++){
+    output.push(arr[i]);
+  }
+
+  return output;
 }

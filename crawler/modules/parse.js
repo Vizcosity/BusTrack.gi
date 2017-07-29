@@ -1,11 +1,16 @@
 // Module for parsing information scraped from the site.
+var config = require('../config.json');
+
 module.exports = {
 
-  timeSince : function(string){
+  // Takes in a string representing time since last stop, converts to raw secs.
+  timeSince: function(string){
 
     var output = [];
 
     var parsedValues = timeStringParser(string);
+
+    if (!parsedValues) return null; // Signals a timeout;
 
     for (var i = 0; i < parsedValues.length; i++){
       if (parsedValues[i].unit == 'minute') output.push(parsedValues[i].val * 60);
@@ -13,6 +18,35 @@ module.exports = {
     }
 
     return sumVals(output);
+
+  },
+
+  // Takes in the full string name of the Bus Stop and returns the Abbr. code.
+  resolveBusStopName: function(longStringName){
+
+    // Check to see if the abbr. exists in the predfined list, if it does, return it.
+      // Reload the JSON first.
+      config = require('../config.json');
+
+      if (config && config.abbreviations && config.abbreviations[longStringName])
+        return config.abbreviations[longStringName];
+
+
+    // If not, calculate the below and add it to the JSON file.
+      // Calculate the abbreviation.
+      var abbreviatedStopName = calcStopAbbreviationName(longStringName);
+
+      // Add it to the config file.
+      config.abbreviations[longStringName] = abbreviatedStopName;
+
+      // Update the JSON file.
+      require('fs').writeFile('./config.json', JSON.stringify(config, null, 2), function callback(err){
+            if (err !== null){console.log(err)};
+            log("Added new abbreviation for '"+longStringName+"': '"+abbreviatedStopName+"'");
+      });
+
+    // Return an abbr of the first letter of every word in the string.
+    return abbreviatedStopName;
 
   }
 }
@@ -29,6 +63,12 @@ function sumVals(arr){
 
 // Parses the timeSince string into a JSON containing Minutes + seconds.
 function timeStringParser(string){
+
+  // If contains over an hour ago, return null.
+  if (string.indexOf("over an hour ago")!== -1){
+    log("Detected timeout. Returning null for time.");
+    return null
+  };
 
   // Separate all of the numbers.
   var numbers = getNumbers(string);
@@ -64,7 +104,8 @@ function getNumbers(string){
 
   var numbers = [];
 
-  // Set index to 0 if it has not been passed.
+  // If no string passed / empty string then return false.
+  if (!string || !string.length) return false;
 
   for (var i = 0; i < string.length; i++){
     if (isNumber(string[i]) && !isNumber(string[i - 1]))
@@ -97,4 +138,28 @@ function getNumber(string, startIndex){
 // Works for single characters only.
 function isNumber(char){
   return !isNaN(parseInt(char));
+}
+
+function calcStopAbbreviationName(longString){
+
+  var abbr = "";
+
+  var words =  longString.split(" ");
+
+  for (var i = 0; i < words.length; i++){
+
+    if (words[i][0] == "(") {
+      abbr += words[i][0] + words[i][1] + ")";
+      continue;
+    }
+
+    abbr += words[i][0];
+  }
+
+  return abbr;
+
+}
+
+function log(message){
+  console.log("[PARSE.js] " + message);
 }
