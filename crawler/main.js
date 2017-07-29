@@ -38,6 +38,14 @@ function runCrawl(routeNumArray){
 
       var logCache = require("./log.json");
       log("ROUTE: " + route);
+
+      // TEMP:
+        // check for access of route existance first.
+        // IF they do not exist for the current route, create them.
+        if (!logCache.routes) logCache.routes = {};
+        if (!logCache.routes[route]) logCache.routes[route] = {current: {}, history: []};
+
+      // Once JSON structure has been prepared / checked, we can add the information.
       logCache.routes[route].current = routeData;
       logCache.routes[route].history.push(routeData);
 
