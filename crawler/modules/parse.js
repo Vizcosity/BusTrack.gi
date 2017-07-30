@@ -140,9 +140,23 @@ function isNumber(char){
   return !isNaN(parseInt(char));
 }
 
+// Removes trailling spaces to prevent 'undefined' concatenation on abbr.
+function removeTrailingSpaces(string){
+
+  for (var i = (string.length - 1); i > 0; i--){
+    if (string[i] == " ") string = string.substring(0, i);
+    else break;
+  }
+
+  return string;
+
+}
+
 function calcStopAbbreviationName(longString){
 
   var abbr = "";
+
+  longString = removeTrailingSpaces(longString);
 
   var words =  longString.split(" ");
 

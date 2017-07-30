@@ -1,8 +1,11 @@
 // Dependencies
-var Horseman = require("node-horseman");
-var fs = require('fs');
+const Horseman = require("node-horseman");
+const fs = require('fs');
 var config = require('./config.json');
-var parse = require('./modules/parse.js');
+const parse = require('./modules/parse.js');
+const CrawlerDBInterface = require("../db/crawler-db-interface.js");
+const dbInterface = new CrawlerDBInterface();
+
 
 log("Initializing horseman crawler...");
 
@@ -12,13 +15,15 @@ var crawler = new Horseman();
 log("Horseman loaded.");
 
 // Grab the interval from the cli otherwise choose default val of 4 seconds.
-var interval = process.argv[2] ? process.argv[2] : 4000;
+var scrapeInterval = process.argv[2] ? process.argv[2] : 4000;
+
+log("Loading ROUTES: " + config.routes.toString() + ". Starting crawl process.");
 
 // Set a recurring crawl.
 setInterval(function(){
-  var routes = arrCopy(config.routes);
+  var routes = arrCopy(config.routes);  
   runCrawl(routes);
-}, interval);
+}, scrapeInterval);
 
 
 // Define the crawl function which will open the webpage for each bus route and scrape
@@ -28,34 +33,22 @@ function runCrawl(routeNumArray){
   // Exit condition.
   if (routeNumArray.length == 0) return;
 
-  console.log(routeNumArray);
+  log("Remaining Routes: "+routeNumArray.toString());
 
     var route = routeNumArray.shift();
-    log("ROUTE: " + route);
+
     getRouteInfo(route, function(routeData){
 
-      console.log(routeData);
+      log("Current ROUTE: " + route);
 
-      var logCache = require("./log.json");
-      log("ROUTE: " + route);
+      // Add the routeID to the routeData object to be passed onto the database!
+      routeData.routeID = route;
 
-      // TEMP:
-        // check for access of route existance first.
-        // IF they do not exist for the current route, create them.
-        if (!logCache.routes) logCache.routes = {};
-        if (!logCache.routes[route]) logCache.routes[route] = {current: {}, history: []};
-
-      // Once JSON structure has been prepared / checked, we can add the information.
-      logCache.routes[route].current = routeData;
-      logCache.routes[route].history.push(routeData);
-
-      // Resave the JSON file.
-      fs.writeFile('log.json', JSON.stringify(logCache, null, 2), function callback(err){
-        if (err){log("Saving JSON log: " + err)};
-        // Call the function again with the remainder of the array.
-        runCrawl(routeNumArray);
+      // Add to DB and run next crawl on callback.
+      dbInterface.insert(routeData, () => {
+          log("Successfully added ROUTE: ["+route+"] crawl info to DB.");
+          runCrawl(routeNumArray);
       });
-
     });
 
 }
@@ -76,13 +69,11 @@ function getRouteInfo(routeNumber, callback){
     // Grab the bus information.
     crawler.text("i").then(function(rawBusInfo){
 
-      console.log(rawBusInfo);
-
       // Parse the raw bus string info and save to the variable.
       busInfo = parseBusesInfo(rawBusInfo);
 
       // Info should be gathered at this point, callback can be executed.
-      if (callback) callback({date: crawlDate, buses: busInfo});
+      if (callback) callback({logdate: crawlDate, buses: busInfo});
 
     });
   });
@@ -96,11 +87,11 @@ function BusLogEntry(date, buses){
 }
 
 // Bus object constructor.
-function Bus(lastStop, timeSince, atStop, raw){
-  this.lastStop = lastStop;
-  this.timeSince = timeSince;
+function Bus(stopID, interval, atStop, rawscrape){
+  this.stopID = stopID;
+  this.interval = interval;
   this.atStop = atStop;
-  if (raw) this.raw = raw; // Used for debugging / accuracy checking.
+  if (rawscrape) this.rawscrape = rawscrape; // Used for debugging / accuracy checking.
 }
 
 // Takes in the raw string from the site and parses into a proper date.
@@ -128,7 +119,7 @@ function parseDate(rawString){
   // Reverse the date string, and replace the delimiter to a standard dash.
   dateString = reverseDate(dateString.replace(/\//g, "-"));
 
-  console.log(dateString+timeString);
+  // console.log(dateString+timeString);
 
   // Return the completed date object.
   // This will be achieved by concatenating the date and time together such that an
@@ -155,9 +146,6 @@ function reverseDate(input){
 // Receives the raw bus strring info and parses it to a useful object.
 function parseBusesInfo(rawText){
 
-  // By default the bus is not at the stop.
-  var atStopBool = false;
-
   var components = rawText.split("...");
   var organizedComponents = [];
 
@@ -165,26 +153,21 @@ function parseBusesInfo(rawText){
   // the stop and the time since ping.
   for (var i = 0; i < components.length; i++){
 
+    // By default the bus is not at the stop.
+    var atStopBool = false;
+
     // Skip current iteration if null or empty.
     if (!components[i]) continue;
 
     var subNameAndTimeComponent;
 
-    console.log("Component: " + components[i]);
-
+    // Split componenets if a comma exists.
     if (components[i].indexOf(", ") !== -1){
-
-      console.log("comma detected.");
 
       subNameAndTimeComponent = components[i].split(", ");
 
-      console.log(subNameAndTimeComponent);
-
       // Remove the 'bus stop' string.
       subNameAndTimeComponent[0] = filterOutWordFromString(subNameAndTimeComponent[0], " Bus Stop");
-
-      console.log("Filter out 'Bus Stop'");
-      console.log(subNameAndTimeComponent);
 
     }
     else
@@ -192,21 +175,12 @@ function parseBusesInfo(rawText){
 
     // If component does not contain 'leaving', then we set atStopBool to true,
     // and prepare the proper name.
-    if (subNameAndTimeComponent[0].indexOf("Leaving ") == -1) {
+    if (!contains(subNameAndTimeComponent[0], 'Leaving') && !contains(components[i], 'Leaving')) {
       atStopBool = true;
     } else {
       // If the component does contain the word 'Leaving ', then we remove it.
       subNameAndTimeComponent[0] = filterOutWordFromString(subNameAndTimeComponent[0], "Leaving ");
     }
-
-    // Check to see for presence of delimiting comma, if not separate manually based
-    // off 'Bus Stop' string.
-    // if (subNameAndTimeComponent[0].indexOf("ago") !== -1){
-    //   subNameAndTimeComponent[0] = filterOutWordFromString(subNameAndTimeComponent[0], " over an hour ago");
-    //   subNameAndTimeComponent[1] = subNameAndTimeComponent[0].split("Bus Stop")[1]; // Signals a timeout ping.
-    // }
-
-    console.log(subNameAndTimeComponent);
 
     var busStopName = parse.resolveBusStopName(subNameAndTimeComponent[0]);
     var timeSince = parse.timeSince(subNameAndTimeComponent[1]);
@@ -234,10 +208,15 @@ function filterOutWordFromString(source, wordToRemove){
   if (source.indexOf(wordToRemove) == -1) return source;
 
   return source.replace(wordToRemove, "");
+
 }
 
 function log(message){
   console.log("[BUS CRAWLER] "+message);
+}
+
+function contains(source, matchingString){
+  return source.indexOf(matchingString) !== -1;
 }
 
 function arrCopy(arr){

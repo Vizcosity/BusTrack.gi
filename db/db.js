@@ -1,7 +1,7 @@
 /**
- *  INTERFACE FOR bustrack DATABASE.
+ *  INTERFACE / wrapper FOR bustrack DATABASE.
  */
-
+function db() {
 const { Pool } = require("pg");
 
 const connectionDetails = {
@@ -12,17 +12,23 @@ const connectionDetails = {
 
 const pool = new Pool(connectionDetails);
 
-module.exports = {
+var connection = {};
 
-  query: function(statement, callback){
+connectToPool(pool, (err, client, done) => {
+  connection.err = err;
+  connection.client = client;
+  connection.done = done;
+});
 
-    connectToPool(pool, (err, client, done) => {
+  this.query = function(statement, callback){
+
+    checkPool(pool, (connection) => {
 
       if (callback)
-        client.query(statement, (err, data) => {
+        connection.client.query(statement, (err, data) => {
 
           if (err) {
-            done();
+            connection.done();
             log("Error executing query: " + statement);
             console.log(err);
           }
@@ -30,14 +36,14 @@ module.exports = {
           return callback(err, data);
 
         });
-      else client.query(statement);
 
+      else connection.client.query(statement);
 
     });
 
   }
 
-}
+
 
 // Utiltiy functions.
 function log(msg){
@@ -59,3 +65,22 @@ function connectToPool(pool, callback){
   });
 
 }
+
+// Check to see if pool connection is established, if not, then
+// connect and return the details in a cb.
+function checkPool(pool, cb){
+
+  if (!connection.client){
+    connectToPool(pool, (err, client, done) => {
+      connection.err = err;
+      connection.client = client;
+      connection.done = done;
+      if (cb) return cb(connection);
+    });
+  } else return cb(connection);
+
+}
+
+}
+
+module.exports = db;

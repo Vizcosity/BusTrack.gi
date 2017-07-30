@@ -43,14 +43,14 @@
     "Europort Building 8": "EB8",
     "Albert Risso House": "ARH",
     "Rosia Plaza": "RP",
-    "Trafagar Cemetery P2 (West)  ": "TCP(W)undefinedundefined",
+    "Trafagar Cemetery P2 (West)": "TCP(W)",
     "Cathedral Square": "CS",
     "GASA Swimming Pool": "GSP",
     "Queensway Quay East": "QQE",
     "Mid Harbours Estate (West)": "MHE(W)",
     "Commonwealth Park": "CP",
     "King's Wharf": "KW",
-    "Shorthorn Estate (East) ": "SE(E)undefined",
+    "Shorthorn Estate (East)": "SE(E)",
     "Referendum Gates": "RG",
     "Glacis Kiosk P2": "GKP",
     "Queensway (West)": "Q(W)",
@@ -101,9 +101,11 @@
     "St Theresa's Church (North)": "STC(N)",
     "St Bernard's Hospital P2": "SBHP",
     "Park and Ride Garage": "PaRG",
-    "Shorthorn Estate (East)": "SE(E)",
     "Faulknor House": "FH",
     "St Theresa's Church (South)": "STC(S)",
-    "Eastern Beach (South)": "EB(S)"
+    "Eastern Beach (South)": "EB(S)",
+    "Mount Alvernia Terminus": "MAT",
+    "Trafagar Cemetery P2 (West)  ": "TCP(W)",
+    "Shorthorn Estate (East) ": "SE(E)"
   }
 }
