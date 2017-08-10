@@ -1,0 +1,26 @@
+{
+  "name": "bustrack.gi",
+  "version": "1.0.0",
+  "description": "A beautiful bus app interface wrapper for Gibraltar.",
+  "main": "main.js",
+  "scripts": {
+    "test": "test",
+    "start": "node app.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Vizcosity/BusTrack.gi.git"
+  },
+  "author": "Aaron Baw",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Vizcosity/BusTrack.gi/issues"
+  },
+  "homepage": "https://github.com/Vizcosity/BusTrack.gi#readme",
+  "dependencies": {
+    "command-line-args": "^4.0.6",
+    "graphlib": "^2.1.1",
+    "node-horseman": "^3.3.0",
+    "phantomjs": "^2.1.7"
+  }
+}

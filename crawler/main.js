@@ -3,8 +3,18 @@ const Horseman = require("node-horseman");
 const fs = require('fs');
 var config = require('./config.json');
 const parse = require('./modules/parse.js');
+const cliArgs = require('command-line-args');
+
 const CrawlerDBInterface = require("../db/crawler-db-interface.js");
 const dbInterface = new CrawlerDBInterface();
+
+const cliOptionSchema = [
+  {name: 'verbose', alias: 'v', type: Boolean},
+  {name: 'interval', alias: 'i', type: Number, defaultValue: config.crawlInterval}
+];
+
+const cliOptions = cliArgs(cliOptionSchema);
+const scrapeInterval = cliOptions.interval;
 
 
 log("Initializing horseman crawler...");
@@ -13,15 +23,11 @@ log("Initializing horseman crawler...");
 var crawler = new Horseman();
 
 log("Horseman loaded.");
-
-// Grab the interval from the cli otherwise choose default val of 4 seconds.
-var scrapeInterval = process.argv[2] ? process.argv[2] : 4000;
-
-log("Loading ROUTES: " + config.routes.toString() + ". Starting crawl process.");
+log("Loading ROUTES: " + config.routes.toString() + ". Starting crawl process with Interval ["+scrapeInterval+"]");
 
 // Set a recurring crawl.
 setInterval(function(){
-  var routes = arrCopy(config.routes);  
+  var routes = arrCopy(config.routes);
   runCrawl(routes);
 }, scrapeInterval);
 
@@ -212,7 +218,7 @@ function filterOutWordFromString(source, wordToRemove){
 }
 
 function log(message){
-  console.log("[BUS CRAWLER] "+message);
+  if (cliOptions.verbose) console.log("[BUS CRAWLER] "+message);
 }
 
 function contains(source, matchingString){

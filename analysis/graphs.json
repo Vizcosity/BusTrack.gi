@@ -1,0 +1,11 @@
+{
+  "route": {
+    "2": {
+
+    }
+  },
+
+  "sequence": {
+    "2": ["MPT", "GK", "OB", "BWM", "CS", "RG", "EW", "RH", "OC", "SF", "B", "GG", "NG", "BV", "EB", "M", "EPT", "M(S)", "BV(S)", "NG(S)", "GG(S)", "MP", "TC", "CP", "NB", "FMS"]
+  }
+}
