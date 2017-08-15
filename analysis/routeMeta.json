@@ -1,0 +1,43 @@
+{
+  "sequence": {
+    "2": ["MPT", "GK", "OB", "BWM", "CS", "RG", "EW", "RH", "OC", "SF", "B", "GG", "NG", "BV", "EB", "M", "EPT", "M(S)", "BV(S)", "NG(S)", "GG(S)", "MP", "TC", "CP", "NB", "FMS"],
+    "3": [
+      "SPST",
+      "SJS",
+      "RP",
+      "RT",
+      "NMH",
+      "C",
+      "JB",
+      "VH",
+      "TC(E)",
+      "TCP(W)",
+      "QQE",
+      "CP",
+      "MHE",
+      "BCH",
+      "VBE",
+      "SWJGGV",
+      "GK",
+      "GKP",
+      "NDS",
+      "RH",
+      "OV",
+      "ARH",
+      "GSP",
+      "SBH",
+      "SBHP",
+      "EB8",
+      "MHE",
+      "MHE(W)",
+      "KW",
+      "QQE",
+      "EW",
+      "RH(S)",
+      "OC",
+      "SF(E)",
+      "S",
+      "SJS"
+    ]
+  }
+}

@@ -107,6 +107,7 @@ function dataInterfaceMain(dbName){
   this.getStopsSupportedByRoute = function(routeID, cb){
     checkDB(dbName);
     db.query("SELECT DISTINCT stopID FROM stoplog where routeID="+routeID, (err, data) => {
+
       if (err) log("Failed to get supported routes for routeID ["+routeID+"]: " + err);
       if (!cb) return log("No callback found for 'getStopsSupportedByRoute' call.");
 
@@ -125,6 +126,35 @@ function dataInterfaceMain(dbName){
     });
   }
 
+  // Returns a history of buses logged on this route.
+  this.getRouteHistory = function(routeID, cb){
+    checkDB(dbName);
+
+    db.query("SELECT * FROM stoplog WHERE routeID="+routeID, (err, data) => {
+      if (err) log("Failed to get stoplog for routeID ["+routeID+"]: " + err);
+      if (!cb) return log("No callback found for 'getRouteHistory' call.");
+
+      return cb(data.rows);
+
+    });
+  }
+
+  // Returns a history of buses logged at this stop.
+  this.getStopHistory = function(stopID, cb){
+
+    checkDB(dbName);
+
+    db.query("SELECT * FROM stoplog WHERE stopID='"+stopID+"'", (err, data) => {
+
+      if (err) log("Failed to get stoplog for stopID ["+stopID+"]: " + err);
+      if (!cb) return log("No callback found for 'getStopHistory' call.");
+
+      return cb(data.rows);
+
+    });
+
+  }
+
 }
 
 module.exports = dataInterfaceMain;
@@ -140,4 +170,16 @@ function checkDB(dbName){
     return
       log(`[WARN] Current data interface is configured with 'live'.
             Current request uses 'stoplog' table. Please use correct INTERFACE.`);
+}
+
+function Result(data){
+
+  // Store the data which is passed to the object.
+  this.data = data;
+
+
+  // We need a way of chaining multiple queries together to allow for
+  // better opration.
+
+
 }

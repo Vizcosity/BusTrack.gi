@@ -12,43 +12,30 @@
  */
 
 // DEPENDENCIES
-// Will be using a Graph library.
-const Graph = require('graphlib').Graph;
-const INTERFACE = require('../data-interface/data-interface-main.js');
-
-// Load up the interface's to the DB.
-const liveDB = new INTERFACE('live');
-const logDB = new INTERFACE('stoplog');
-
-var graphs = require('./graphs.json');
-
-// Each graph will be held inside of this.
-var route = {};
+var graphModel = require('./models/graphModel.js');
 
 
-// We construct the first route (2).
-route[2] = new Graph();
+// Module Object.
+function AnalysisModule(routes, options){
 
-logDB.getStopsSupportedByRoute(2, (stops) => {
-
-  for (var i = 0; i < stops.length; i++){
-    route[2].setNode(stops[i].id, stops[i]);
-  }
-
-  console.log("Doing nodes");
-
-  console.log(route[2].nodes());
-
-  for (var i = 0; i < route[2].nodes().length; i++){
-
-    var cn = route[2].nodes()[i];
-
-    console.log("Next Stop For " + cn + " is " + getNextStop(cn));
-  }
+  var graphs = constructGraphs(routes);
 
 
-});
 
-function getNextStop(stop){
-  return graphs.sequence[2][graphs.sequence[2].indexOf(stop) + 1]
 }
+
+// Construct graphs for each route passed.
+function constructGraphs(routes){
+
+  var output = {};
+
+  routes.forEach((route) => {
+
+    output[route] = new graphModel(route);
+
+  });
+
+  return output;
+
+}
+module.exports = AnalysisModule;
