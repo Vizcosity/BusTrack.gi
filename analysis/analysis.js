@@ -20,22 +20,30 @@ function AnalysisModule(routes, options){
 
   var graphs = constructGraphs(routes);
 
-
+  // console.log(graphs[3]);
 
 }
 
 // Construct graphs for each route passed.
 function constructGraphs(routes){
 
+  // Output graphs.
   var output = {};
 
   routes.forEach((route) => {
 
     output[route] = new graphModel(route);
 
+    // For each edge, we then calculate the ETAs of the two nodes
+    // which are connected by the edge. Grab their values, and find the
+    // latest entries, then pop into the nifty edge calculate / add eta function.
+
   });
 
   return output;
 
 }
+
+
+
 module.exports = AnalysisModule;

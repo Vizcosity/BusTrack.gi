@@ -58,7 +58,7 @@ function connectToPool(pool, callback){
       done();
       log("DB failed to set up connection to pool.");
       console.log(err);
-    } else log("DB connection successful.");
+    }
 
     if (callback) callback(err, client, done);
 

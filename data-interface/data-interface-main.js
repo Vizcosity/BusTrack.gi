@@ -28,7 +28,7 @@ function dataInterfaceMain(dbName){
       if (!cb) return log("No callback found for 'getAllBuses' call.");
       return cb(data.rows);
     });
-  }
+  };
 
   // Returns all the buses currently at a given stop.
   this.getBusesAtStop = function(stopID, cb){
@@ -37,7 +37,7 @@ function dataInterfaceMain(dbName){
       if (!cb) return log("No callback found for 'getBusesAtStop' call.");
       return cb(data.rows);
     });
-  }
+  };
 
   // Returns all buses currently at stop AND approaching the stop.
   this.getBusesApproachingStop = function(stopID){
@@ -45,7 +45,7 @@ function dataInterfaceMain(dbName){
      * This one requires a bit of processing,
      * will leave to later.
      */
-  }
+  };
 
   // Returns all the buses and their locations on the routeID specified.
   this.getBusesOnRoute = function(routeID, cb){
@@ -54,7 +54,7 @@ function dataInterfaceMain(dbName){
       if (!cb) return log("No callback found for 'getBusesOnRouteID' call.");
       return cb(data.rows);
     });
-  }
+  };
 
   // Returns all the buses that are currently waiting at a stop.
   this.getWaitingBuses = function(cb){
@@ -63,7 +63,7 @@ function dataInterfaceMain(dbName){
       if (!cb) return log("No callback found for 'getWaitingBuses' call.");
       return cb(data.rows);
     });
-  }
+  };
 
   // Returns subset of logs which have all logs recorded today.
   this.getBusesLoggedToday = function(cb){
@@ -72,7 +72,7 @@ function dataInterfaceMain(dbName){
     this.getBusesLoggedBetween(startOfToday, endOfToday, (data) => {
       return cb(data);
     });
-  }
+  };
 
   // Returns subset of logs recorded this week.
   this.getBusesLoggedThisWeek = function(cb){
@@ -81,7 +81,7 @@ function dataInterfaceMain(dbName){
     this.getBusesLoggedBetween(startOfWeek, endOfWeek, (data) => {
       return cb(data);
     });
-  }
+  };
 
   // Returns subset of logs recorded at a specified timeframe.
   this.getBusesLoggedBetween = function(date1, date2, cb){
@@ -91,7 +91,7 @@ function dataInterfaceMain(dbName){
       if (!cb) return log("No callback found for 'getBusesLoggedBetween' call.");
       return cb(data.rows);
     });
-  }
+  };
 
   // Returns all routeIDs which support the passed stopID.
   this.getRoutesWhichSupportStop = function(stopID, cb){
@@ -101,7 +101,7 @@ function dataInterfaceMain(dbName){
       if (!cb) return log("No callback found for 'getRoutesWhichSupportStopID' call.");
       return cb(data.rows);
     });
-  }
+  };
 
   // Returns all stopIDs which are supported by a given routeID.
   this.getStopsSupportedByRoute = function(routeID, cb){
@@ -124,7 +124,7 @@ function dataInterfaceMain(dbName){
 
       return cb(data.rows);
     });
-  }
+  };
 
   // Returns a history of buses logged on this route.
   this.getRouteHistory = function(routeID, cb){
@@ -137,7 +137,7 @@ function dataInterfaceMain(dbName){
       return cb(data.rows);
 
     });
-  }
+  };
 
   // Returns a history of buses logged at this stop.
   this.getStopHistory = function(stopID, cb){
@@ -153,7 +153,23 @@ function dataInterfaceMain(dbName){
 
     });
 
-  }
+  };
+
+  // Returns all the entries for a passed stopID & routeID.
+  this.getStopAndRouteEntries = function(stopID, routeID, cb){
+
+    // checkDB(dbName);
+
+    db.query("SELECT * FROM stoplog WHERE stopID='"+stopID+"' AND routeID="+routeID, (err, data) => {
+
+      if (err) log("Failed to get stoplog for stopID ["+stopID+"]: " + err);
+      if (!cb) return log("No callback found for 'getStopAndRouteEntries' call.");
+
+      return cb(data.rows);
+
+    });
+
+  };
 
 }
 

@@ -19,7 +19,9 @@
   "homepage": "https://github.com/Vizcosity/BusTrack.gi#readme",
   "dependencies": {
     "command-line-args": "^4.0.6",
+    "graph.js": "^1.21.1",
     "graphlib": "^2.1.1",
+    "js-graph": "^1.7.1-alpha",
     "node-horseman": "^3.3.0",
     "phantomjs": "^2.1.7"
   }
