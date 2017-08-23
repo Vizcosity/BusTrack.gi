@@ -92,7 +92,7 @@ function Node(stop, prevNode, nextNode){
 
     // We need to create a date property, seperate from the logdate,
     // which is a computed property which takes into accoun the ping interval.
-    entry.date = moment(entry.logdate.setSeconds(entry.logdate.getSeconds() - entry.interval));
+    entry.date = moment(entry.logdate.setSeconds(entry.logdate.getSeconds() - (entry.interval / 1000)));
 
     // Add the entry to the right places.
     self.log.all.push(entry);
@@ -108,6 +108,7 @@ function Node(stop, prevNode, nextNode){
   // distinct entries which differ from each other greater than this, then we
   this.sortEntries = function(){
 
+    // Save entries to a variable.
     var entries = self.log.unsorted;
 
     // Split up all the entries into 'blocks' that can be sorted
@@ -133,24 +134,30 @@ function Node(stop, prevNode, nextNode){
       // this is the departure time.
       var departureItem = getDepartureItemFromSortBlock(sortBlock);
 
+      // If departureItem false, could not find so we skip the sort block.
+      if (!departureItem) {
+        // console.log("invalid dept item. skipping.");
+        return false;
+      }
+
       // Push the departure item to it's respective arrays.
       self.log.departure.unprocessed.push(departureItem);
       self.log.departure.all.push(departureItem);
 
       // Now that we have the arrival and departure time for the given
       // sortBlock, we can calculate the time spent at the stop.
-      var atStopObject = new atStopObject(arrivalItem, departureItem);
+      var atStopEntry = new AtStopObject(arrivalItem, departureItem);
 
       // Once we have the atStop duration, we can push it to the correct array(s).
-      self.log.atStop.all.push(atStopObject);
+      self.log.atStop.all.push(atStopEntry);
 
 
     });
 
     // Now that each sortBlock has been processed, we can remove the
-    // items from the self.log.unprocessed array.
+    // items from the self.log.unsorted array.
     // Calculate array difference and thne reassign the remainders to the array.
-    self.log.unprocessed = arrayDifference(self.log.unprocessed, sortBlocks);
+    self.log.unsorted = arrayDifference(self.log.unsorted, sortBlocks);
 
     // And we are done!
 
@@ -162,8 +169,8 @@ function Node(stop, prevNode, nextNode){
     var AVGs = {};
 
     // Select time periods from 'avg-active' property. They can be disabled here.
-    var periods = Object.keys(self.atStop.avg).filter((period) => {
-      return self.atStop['avg-active'][period];
+    var periods = Object.keys(self.log.atStop.avg).filter((period) => {
+      return self.log.atStop['active-avg'][period];
     });
 
     // Set up arrays for each period.
@@ -174,13 +181,13 @@ function Node(stop, prevNode, nextNode){
     });
 
     // Loop through all Logged AVGs
-    self.atStop.all.forEach((avg) => {
+    self.log.atStop.all.forEach((entry) => {
 
       // If no date or no eta, skip current iteration (invalid data).
-      if (!avg || !avg.val || !avg.date) return false;
+      if (!entry || !entry.duration || !entry.date) return false;
 
       // Parse date as a moment object.
-      var avgMoment = moment(avg.date);
+      var avgMoment = moment(entry.date);
 
       // For each defined period of time, we need to grab all of the ETAs for that
       // period.
@@ -189,7 +196,7 @@ function Node(stop, prevNode, nextNode){
         // If the eta is within the period specified, push it to the ETA array
         // for that period type.
         if (withinPeriod(avgMoment, period))
-          AVGs[period].push(avg);
+          AVGs[period].push(entry);
 
       });
 
@@ -199,7 +206,7 @@ function Node(stop, prevNode, nextNode){
     // We can now caclulate averages and update.
     periods.forEach((period) => {
 
-      self.atStop.avg[period] = calculateAvgForPeriod(AVGs[period]);
+      self.log.atStop.avg[period] = calculateAvg(AVGs[period]);
 
     });
 
@@ -233,7 +240,10 @@ function Node(stop, prevNode, nextNode){
   // stack. Returns this object, along with a method which removes it from the
   // unprocessed array, and unshifts to the processed array (adds to beginning)
   // if it is choosed to be processed.
-  this.popMostRecentArrival = function(){
+  this.mostRecentArrival = function(){
+
+    // If the unprocessed arrival log empty, return false.
+    if (self.log.arrival.unprocessed.length === 0) return false;
 
     // Get the most recent addittion to the array.
     var arrivalItem = self.log.arrival.unprocessed[self.log.arrival.unprocessed.length - 1];
@@ -259,7 +269,10 @@ function Node(stop, prevNode, nextNode){
   // stack. Returns this object, along with a method which removes it from the
   // unprocessed array, and unshifts to the processed array (adds to beginning)
   // if it is choosed to be processed. Same as the arrivals.
-  this.popMostRecentDeparture = function(){
+  this.mostRecentDeparture = function(){
+
+    // If the unprocessed departure log empty, return false.
+    if (self.log.departure.unprocessed.length === 0) return false;
 
     // Get the most recent addittion to the array.
     var departureItem = self.log.departure.unprocessed[self.log.departure.unprocessed.length - 1];
@@ -283,7 +296,11 @@ function Node(stop, prevNode, nextNode){
 }
 
 // OBJECTS
-function atStopObject(arrivalItem, departureItem){
+function AtStopObject(arrivalItem, departureItem){
+
+  // console.log(arrivalItem);
+  //
+  // console.log(departureItem);
 
   // Set the duration.
   this.duration = calculateAtStopDuration(arrivalItem.date, departureItem.date);
@@ -293,15 +310,32 @@ function atStopObject(arrivalItem, departureItem){
   this.departureDate = departureItem.date;
 
   // We will set the 'date' as the median of the two dates. (arrival + departure).
-  this.date = getMedianDate(this.arrivalDate, this.departureDate);
+  this.date = getMedianDate(arrivalItem.date, departureItem.date);
 
 }
 
 // Utility functions
 
+// Returns a boolean determining whether the date lies within the period specified.
+function withinPeriod(date, period){
+
+  // The Moment.js lib re-sets the date object when .startOf / .endOf method
+  // is invoked, so we need to save as new dates before we run the query.
+  var original = moment(date);
+  var startPeriod = moment(date.startOf(period));
+  var endPeriod = moment(date.endOf(period));
+
+  // Run the test.
+  var bool = original.isBetween(startPeriod, endPeriod);
+
+  // Return the boolean.
+  return bool;
+
+}
+
 // Calculates the mid-point of the two dates given.
 function getMedianDate(date1, date2){
-  return new Date( (  (date1.getTime() + date2.getTime())  / 2) );
+  return moment(  (date1 + date2)  / 2 );
 }
 
 // Splits up all the entries into blocks of where the bus should be at a stop,
@@ -324,7 +358,7 @@ function getSortBlocks(entries){
     if (!previous || !next) continue;
 
     // Check to see if the time difference exceeds the _SCRAPEINTERVAL
-    if (current - previous > _SCRAPEINTERVAL) {
+    if (current.date - previous.date > _SCRAPEINTERVAL) {
 
       // Save block to a variable.
       var sortBlock = fetchSortBlock(entries, i);
@@ -343,6 +377,8 @@ function getSortBlocks(entries){
 
   }
 
+  // console.log(output);
+
   // Return output at the end of the for loop.
   return output;
 
@@ -353,7 +389,7 @@ function calculateAvg(entries){
 
   var sum = 0;
 
-  entires.forEach((entry) => {
+  entries.forEach((entry) => {
 
     sum += entry.duration;
 
@@ -361,6 +397,8 @@ function calculateAvg(entries){
 
   // Once all of the durations have been summed, we can calculate the mean.
   var mean = (sum / entries.length);
+
+  // if (mean < 0) console.log(entries);
 
   // Return the result.
   return mean;
@@ -377,15 +415,41 @@ function calculateAtStopDuration(arrival, departure){
 
 // Gets the departure time from a passed sort block.
 // (First item in a while where atStop = false).
-function getDepartureItemFromSortBlock(sortBlock){
+function getDepartureItemFromSortBlock(entries){
 
-  sortBlock.forEach((item) => {
+  // Agnostic approach; either finds first atstop = false item,
+  // or the previous entry to which entry date difference exceeds
+  // scrape interval, otherwise the last item at the stop is returned.
+  for (var i = 0; i < entries.length; i++){
+
+    // Get the next and previous entries.
+    var previous = (i !== 0 ? entries[i - 1] : null);
+    var next = ((i+1) < entries.length ? entries[i+1] : null);
+    var current = entries[i];
+
+    // We dont want to deal with the first & last entries, too little
+    // preceeding / succeeding information to sort properly.
+    if (!previous || !next) continue;
+
+    // console.log(current.date - previous.date);
 
     // As soon as we find the first non atStop(true) log entry,
     // we need to return this.
-    if (!item.atStop) return item;
+    if (current.atStop == false) return current;
 
-  });
+    // console.log(current);
+
+    // Check to see if the time difference exceeds the _SCRAPEINTERVAL
+    if ((current.date - previous.date) > (_SCRAPEINTERVAL)) return previous;
+
+  }
+
+  // If we reach this point in code execution,
+  // we cannot find a valid departure date and so
+  // the entire block must be invalid.
+  // return false
+
+  return entries[entries.length - 1];
 
 }
 
@@ -412,10 +476,15 @@ function fetchSortBlock(entries, index){
     // preceeding / succeeding information to sort properly.
     if (!previous || !next) continue;
 
+    // if (entries[i].atstop == false) {
+    //   console.log("FOUND ONE MARTY!");
+    //   console.log(entries[i]);
+    // }
+
     // If the current entry is within the scrape interval of the last,
     // (previous), then we add it to the outputSortBlock, otherwise, break
     // the loop.
-    if (current - previous > _SCRAPEINTERVAL) return {
+    if (current.date - previous.date > _SCRAPEINTERVAL) return {
       block: outputSortBlock,
       index: i
     };
@@ -433,6 +502,8 @@ function fetchSortBlock(entries, index){
 
 // Calculate difference between two arrays, to move sorted entries.
 function arrayDifference(main, toTakeAway){
+
+
 
   var output = [];
 

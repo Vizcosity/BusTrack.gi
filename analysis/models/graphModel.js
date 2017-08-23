@@ -47,10 +47,25 @@ function graphModel(route){
   log("Populating nodes with entries from stops & route.")
   populateNodes(graphToVertexArray(this.graph), route, () => {
     log("Nodes populated for route: "+route+".");
+
+    log("Attempting to process.");
+
+    // For each vertex, process all of the entries that have been added.
+    processNodeEntries(graphToVertexArray(this.graph));
+
+    log("Done!");
+
+    graphToVertexArray(this.graph).forEach((vertex) => {
+      console.log(vertex.key + ": " +vertex.value.log.atStop.avg.hour);
+
+      console.log(vertex.value.mostRecentArrival());
+    })
+
   });
 
   //TODO: PROCESS GRPAH NODES & EDGES; FILL IN WITH DATA FOR NODE & EDGE.
   //TODO: IMPLEMENT NODE OBJECT CONSTRUCTOR.
+
 
 
   // Object Utility.
@@ -68,6 +83,19 @@ function graphModel(route){
 }
 
 // UTILITY FUNCTIONS
+
+// Iterates through each vertex and processes + sorts all of the data entered.
+function processNodeEntries(nodes){
+
+  // Iterate through each node.
+  nodes.forEach((node) => {
+
+    // Call the process entry method attached to the node.
+    node.value.processEntries();
+
+  });
+
+}
 
 // Takes in a Node and a route, then populates the Node with the history for all
 // the recorded buses taken at that stop.
