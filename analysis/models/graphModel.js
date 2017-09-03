@@ -23,10 +23,16 @@ const logDB = new INTERFACE('stoplog');
 var routeMetaData = require('../routeMeta.json');
 var routeSequence = routeMetaData.sequence;
 
+// Properties
+var _DEBUG = false;
+
 // Prepare as a module.
 module.exports = graphModel;
 
-function graphModel(route){
+function graphModel(route, properties){
+
+  // Check for passed properties.
+  if (properties && properties.debug) _DEBUG = true;
 
   // Reference to object instance.
   var self = this;
@@ -53,13 +59,14 @@ function graphModel(route){
     // For each vertex, process all of the entries that have been added.
     processNodeEntries(graphToVertexArray(this.graph));
 
-    log("Done!");
+    log("Finished processing nodes.");
 
-    graphToVertexArray(this.graph).forEach((vertex) => {
-      console.log(vertex.key + ": " +vertex.value.log.atStop.avg.hour);
+    log("Processing Graph edges now.");
 
-      console.log(vertex.value.mostRecentArrival());
-    })
+    processEdges(this.graph);
+
+    // Graph constructed.
+    log("Graph succesfully constructed.");
 
   });
 
@@ -82,7 +89,127 @@ function graphModel(route){
 
 }
 
+
+// OBJECTS
+
+// ETADatePair object to be pushed to the findDatePairs output array.
+// This will eventually be added to a graph edge for ETA calculation and logging.
+function ETADatePair(departureItem, arrivalItem){
+
+  // Arrival & departure properties.
+  this.arrival = arrivalItem;
+  this.departure = departureItem;
+
+}
+
 // UTILITY FUNCTIONS
+
+// Takes in graph and processes all edges.
+function processEdges(graph){
+
+  graphToEdgeArray(graph).forEach((edge) => {
+
+    // Process the edge.
+    processEdge(edge.value, graph);
+
+  });
+
+}
+
+// Takes in an edge and processes the ETAs for this edge.
+function processEdge(edge, graph){
+
+  // Each edge should have linked the node from which the edge originates from,
+  // and also terminates.
+  var sourceNode = graph.vertexValue(edge.source);
+  var destNode = graph.vertexValue(edge.destination);
+
+  // We need to find a matching pair of dates, where the following conditions apply:
+  //  (1) The sourceNode date occurs before.
+  //  (2) The destNode date occurs after.
+  //  (3) The sourceNode date is a departure.
+  //  (4) The destNode date is an arrival.
+
+  // console.log("SOURCE: ");
+  // console.log(sourceNode);
+  //
+  // console.log("DESTINATION: ");
+  // console.log(destNode);
+
+  // Find all matching date pairs and add to an array.
+  var datePairs = findDatePairs(sourceNode, destNode);
+
+  // For each date pair we add it to the edge.
+  datePairs.forEach((pair) => {
+
+    // Add the ETA by adding the two dates. The edge module will
+    // then process and log accordingly.
+    edge.addETA(pair.departure.date, pair.arrival.date);
+
+  });
+
+  // Once we are finished adding all of the date pairs we can recalculate all of
+  // the ETAs.
+
+  edge.recalculateETAs();
+
+  // And we are done!
+
+}
+
+// Utility method for the process edge function which constructs an array of
+// matching date pairs to be used to calculate edge ETAs.
+function findDatePairs(source, destination){
+
+  // Prepare the output array.
+  var output = [];
+
+  // If arrivalDate > departureDate then return the dates & pop.
+
+  // We set up the iterators for departures and arrivals.
+  var arrivalIterator = new destination.UnprocessedArrivalsIterator();
+  var departureIterator = new source.UnprocessedDeparturesIterator();
+
+  // Start from the most recent departure, and then link it to
+  // the most recent arrival which occurs after.
+
+  // Save current arrival and departure items as variables.
+  var arrival = arrivalIterator.next();
+  var departure = departureIterator.next();
+
+  // Perform while loop until either iterator runs out.
+  while (arrivalIterator.hasNext() && departureIterator.hasNext()){
+
+    // If the most recent departure time is before most recent arrival time,
+    // we push both items to the output array and 'pop' / process them.
+    if (departure.date.isBefore(arrival.date)) {
+
+      // Push item to output array.
+      output.push(new ETADatePair(departure, arrival));
+
+      // Iterate departure and arrival.
+      arrival = arrivalIterator.next();
+      departure = departureIterator.next();
+
+      // Continue to next iteration.
+      continue;
+
+      // If the departure date is after arrival, continue iterating departure.
+    } else if (!departure.date.isBefore(arrival.date)){
+
+      // Iterate departure.
+      departure = departureIterator.next();
+
+    }
+
+  }
+
+  // After the while loop terminates we return the output array with all the
+  // matching datepair objects.
+  return output;
+
+
+}
 
 // Iterates through each vertex and processes + sorts all of the data entered.
 function processNodeEntries(nodes){
@@ -191,6 +318,10 @@ function constructGraph(stopSequence, route){
     // Add the edge object.
     graph.addNewEdge(stopID, nextStopID, new Edge(stopID, nextStopID));
 
+    // Link the prev & next nodes.
+    vertex.value.setNextNode(graph.vertexValue(nextStopID));
+    graph.vertexValue(nextStopID).setPrevNode(vertex.value);
+    
   });
 
   // Once the base graph has been constructed we can return it.
@@ -248,11 +379,9 @@ function graphToEdgeArray(graph){
 
   while (!edge.done)  {
 
-    console.log(edge);
+    output.push({from: edge.value[0], to: edge.value[1], value: edge.value[2]});
 
-    output.push({key: edge.value[0], value: edge.value[1]});
-
-    vertex = edges.next();
+    edge = edges.next();
 
   };
 
@@ -262,5 +391,5 @@ function graphToEdgeArray(graph){
 
 // Utility functions.
 function log(message){
-  console.log('[graphModel.js] ' + message);
+  if (_DEBUG) console.log('[graphModel.js] ' + message);
 }

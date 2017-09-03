@@ -14,13 +14,76 @@
 // DEPENDENCIES
 var graphModel = require('./models/graphModel.js');
 
+// Config.
+var _RECALCPERIOD, _ETATYPE;
 
 // Module Object.
 function AnalysisModule(routes, options){
 
+  // Options for periodic recalculation.
+  if (options && options.recalcperiod) _RECALCPERIOD = options.recalcperiod;
+
+  // Construct the graphs for each route.
   var graphs = constructGraphs(routes);
 
-  // console.log(graphs[3]);
+  // Get the Path and ETA info for the journey specified.
+  this.getPath = function(routeID, sourceStop, destStop, prop){
+
+    // Reference to the graph being used for the current route.
+    var graph = graphs[routeID].graph;
+
+    // The path / sequence of nodes desired for the journey from sourceStop
+    // to destStop.
+    var path = [];
+
+    // If not specified, we use the daily ETA avg by default.
+    var etaAvgPeriod = (prop && prop.etaAvgPeriod ? prop.etaAvgPeriod : 'day');
+
+    // Check if there exists a path between the two stops before calculating the ETA.
+    if (!graph.hasPath(sourceStop, destStop)) return log("No path for stops entered.");
+
+    var ETASum = 0;
+
+    // Create node variables for the current node.
+    var prevNode = graph.vertexValue(sourceStop);
+    var currentNode = prevNode;
+
+    // Push the origin node to the path.
+    path.push(prevNode);
+
+    // Traverse graph from sourceStop until destStop is reached.
+    while(currentNode.stop !== destStop){
+
+      // Set prev node to the current node.
+      prevNode = currentNode;
+
+      // Get the next node.
+      currentNode = currentNode.next;
+
+      // Push current node to path array.
+      path.push(currentNode);
+
+      // Save next edge and eta value to variables.
+      var currentEdge = graph.edgeValue(prevNode.stop, currentNode.stop);
+      var currentETA  = currentEdge.getETA(etaAvgPeriod);
+
+      if (!currentETA) {console.log("No eta for edge: "); console.log(currentEdge);}
+
+      // Add ETA between prevNode & currentNode to the running ETA sum total.
+      ETASum += currentETA;
+
+    }
+
+    // After the while loop terminates we have the ETA and the path.
+    return {
+      source: sourceStop,
+      destination: destStop,
+      ETA: ETASum,
+      path: path
+    }
+
+  }
+
 
 }
 
@@ -41,6 +104,13 @@ function constructGraphs(routes){
   });
 
   return output;
+
+}
+
+// Finds the shortest path between two nodes.
+function findShortestPath(nodeOne, nodeTwo){
+
+
 
 }
 

@@ -140,6 +140,7 @@ function Node(stop, prevNode, nextNode){
         return false;
       }
 
+
       // Push the departure item to it's respective arrays.
       self.log.departure.unprocessed.push(departureItem);
       self.log.departure.all.push(departureItem);
@@ -251,12 +252,17 @@ function Node(stop, prevNode, nextNode){
     // Attach the method which allows for popping.
     arrivalItem.pop = function(){
 
+      // Save the item to a variable so that it can also be returned on pop.
+      var itemToPop = self.log.arrival.unprocessed[self.log.arrival.unprocessed.length - 1];
+
       // Remove this item from the 'unprocessed' array, then add it to the
       // beginning of the processed array.
       // We need to pop + unshift to preserve the original ordering of the
       // elements as they were added.
       self.log.arrival.processed.unshift(self.log.arrival.unprocessed.pop());
 
+      // Return the popped item in case it needs to be used.
+      return itemToPop;
 
     }
 
@@ -293,9 +299,125 @@ function Node(stop, prevNode, nextNode){
 
   }
 
+  // This will be used to iterate through arrivals and find matching date pairs.
+  this.UnprocessedArrivalsIterator = function(){
+
+    // Reference to this for nested this functions.
+    var nestedSelf = this;
+
+    var array = self.log.arrival.unprocessed;
+    var i = 0;
+
+    this.next = function(){
+
+      // If there is a next item, return it, false otherwise.
+      return (nestedSelf.hasNext() ?
+        attachEntryMethods(array[i++], {
+          unprocessed: self.log.arrival.unprocessed,
+          processed: self.log.arrival.processed
+        }, i)
+      : false);
+
+    }
+
+    this.hasNext = function(){
+
+      // If the next array item is not defined, then return true, false otherwise.
+      return typeof array[i + 1] !== 'undefined';
+
+    }
+
+
+  }
+
+  // Returns iterator for unprocessed departures used for date matching.
+  this.UnprocessedDeparturesIterator = function(){
+
+    // Reference to this for nested this functions.
+    var nestedSelf = this;
+
+    var array = self.log.departure.unprocessed;
+    var i = 0;
+
+    // Return the next item in the Iterator.
+    this.next = function(){
+
+      // If there is a next item, return it, false otherwise.
+      return (nestedSelf.hasNext() ?
+        attachEntryMethods(array[i++], {
+          unprocessed: self.log.departure.unprocessed,
+          processed: self.log.departure.processed
+        }, i)
+      : false);
+
+    }
+
+    // Get the current item being iterated, without actually iterating further.
+    this.current = function(){
+
+      // Return the current item with attached methods.
+      return attachArrivalMethods(array[i], {
+        unprocessed: self.log.departures.unprocessed,
+        processed: self.log.departures.processed
+      }, i);
+
+    }
+
+    // Boolean which detrermines if the Iterator has a following value.
+    this.hasNext = function(){
+
+      // If the next array item is not defined, then return true, false otherwise.
+      return typeof array[i + 1] !== 'undefined';
+
+    }
+
+
+  }
+
+  // Return array of processed arrivals.
+  this.processedArrivals = function(){
+
+    return self.log.arrivals.processed;
+
+  }
+
+  // Return unprocessed departures for date matching.
+  this.unprocessedDepartures = function(){
+
+    return self.log.departures.unprocessed;
+
+  }
+
+  // Return processed departures.
+  this.processedDepartures = function(){
+
+    return self.log.departures.processed;
+
+  }
+
 }
 
 // OBJECTS
+
+function attachEntryMethods(item, arrays, index){
+
+  // Pop function which removes from unprocessed and places in processed.
+  item.process = function(){
+
+    // Add the item to the beginning of the processed array.
+    arrays.processed.unshift(item)
+
+    // Return the popped item in case it needs to be used, while removing it
+    // from the unprocessed array at the same time.
+    return arrays.unprocessed.splice(index, 1);
+
+  }
+
+  // Return back the item with attached method(s);
+  return item;
+
+}
+
 function AtStopObject(arrivalItem, departureItem){
 
   // console.log(arrivalItem);

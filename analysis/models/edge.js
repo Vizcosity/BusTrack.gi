@@ -82,6 +82,18 @@ function Edge(sourceStop, destStop, prop){
 
   }
 
+  // Returns ETA for the average type specified.
+  this.getETA = function(avgType){
+
+    // Check to see if the current ETA is active.
+    if (!this.ETA['active-avg'][avgType])
+      return log("ETA avg '"+avgType+"' is disabled. Enable or choose a different one.");
+
+    // Simple object map.
+    return self.ETA.avg[avgType];
+
+  }
+
   /**
    * [Recalculates ETAs for all of the active average periods.]
    */
@@ -90,8 +102,8 @@ function Edge(sourceStop, destStop, prop){
     var ETAs = {};
 
     // Select time periods from 'avg-active' property. They can be disabled here.
-    var periods = Object.keys(self.ETA.active).filter((period) => {
-      return self.ETA['avg-active'][period];
+    var periods = Object.keys(self.ETA.avg).filter((period) => {
+      return self.ETA['active-avg'][period];
     });
 
     // Set up arrays for each period.
@@ -154,13 +166,23 @@ function calculateETA(earlyDate, lateDate){
 
 // Calculates the mid-point of the two dates given.
 function getMedianDate(date1, date2){
-  return new Date( (  (date1.getTime() + date2.getTime())  / 2) );
+  return moment(  (date1 + date2)  / 2 );
 }
 
 // Checks to see if passed date is within valid period.
-function withinPeriod(moment, period){
+function withinPeriod(date, period){
 
-  return moment().isBetween(moment().startOf(period), moement().endOf(period));
+  // The Moment.js lib re-sets the date object when .startOf / .endOf method
+  // is invoked, so we need to save as new dates before we run the query.
+  var original = moment(date);
+  var startPeriod = moment(date.startOf(period));
+  var endPeriod = moment(date.endOf(period));
+
+  // Run the test.
+  var bool = original.isBetween(startPeriod, endPeriod);
+
+  // Return the boolean.
+  return bool;
 
 }
 
