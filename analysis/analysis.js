@@ -70,7 +70,7 @@ function AnalysisModule(routes, options){
       if (!currentETA) {console.log("No eta for edge: "); console.log(currentEdge);}
 
       // Add ETA between prevNode & currentNode to the running ETA sum total.
-      ETASum += currentETA;
+      ETASum += (currentETA ? currentETA : 0);
 
     }
 
@@ -112,6 +112,10 @@ function findShortestPath(nodeOne, nodeTwo){
 
 
 
+}
+
+function log(message){
+  console.log("[BusTracK | analysis] " + message);
 }
 
 

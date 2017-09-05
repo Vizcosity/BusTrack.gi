@@ -321,7 +321,9 @@ function constructGraph(stopSequence, route){
     // Link the prev & next nodes.
     vertex.value.setNextNode(graph.vertexValue(nextStopID));
     graph.vertexValue(nextStopID).setPrevNode(vertex.value);
-    
+
+    // Set the next node link for the current node.
+
   });
 
   // Once the base graph has been constructed we can return it.

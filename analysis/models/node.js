@@ -30,6 +30,14 @@ function Node(stop, prevNode, nextNode){
   this.previous = (prevNode ? prevNode : null);
   this.next = (nextNode ? nextNode : null);
 
+  // Links to next and previous nodes. This takes into account the preceeding
+  // node just before this one to determine the real next node value, since
+  // we can have routes where two different nodes may link to the same node
+  // perhaps in a different direction, and so we need to take into account
+  // previous (or preceeding) node values when determining the next node
+  // in the graph sequence.
+  this.link = [];
+
   // The log object will hold the information of all the logged arrivals for
   // buses on this route for this specific stop, and the time at which the arrival
   // took place.
@@ -225,15 +233,101 @@ function Node(stop, prevNode, nextNode){
 
   }
 
-  // Set the previous connected node. (Origin / Source).
-  this.setPrevNode = function(nodeObj){
-    self.previous = nodeObj;
+  // Set the previous or next connected node. (Origin / Source).
+  this.linkNode(preceedingNode, succeedingNode){
+
+    // Check to see if the link already exists.
+    // If the link does exist, return prematurely.
+    self.link.forEach(link => {
+
+      if (
+          link.preceeding.stop === preceedingNode.stop
+          &&
+          link.succeedingNode.stop === succeedingNode.stop
+        ) return log("Link already exists");
+
+    });
+
+    // Push to the link array.
+    self.link.push({
+      preceeding: preceedingNode,
+      succeeding: succeedingNode
+    });
+
   };
 
-  // Set the next connected node. (Destination).
-  this.setNextNode = function(nodeObj){
-    self.next = nodeObj;
+  // Get the next node in the sequence. Takes in the preceeding node.
+  this.getNextNode(preceedingNode){
+
+    // Resolve node object into a string stop id if it is not already.
+    var preceedingNodeID = (typeof preceedingNode === "string" ? preceedingNode : preceedingNode.stop);
+
+    // Ability to use function without entering the preceedingNodeID if there
+    // is just a single node that is linked (should be most cases)
+    if (!preceedingNodeID && self.link.length > 0)
+      return log(
+        `Error: Cannot get next node without preceeding
+        node id since more than a single node is linked.`
+      );
+
+    // If no preceedingNodeID passed we can assume that at this point in the
+    // code execution there is only one link so it should be safe to return
+    // the first item in the array.
+    if (!preceedingNodeID) return self.link[0].succeeding;
+
+    // PreceedingNodeID should be required at this point.
+    self.link.forEach(link => {
+
+      // Check to see if the ID matches any of the linked nodes for preceeding
+      // nodes. If it does, return the associated linked node.
+      if (link.preceedingNode.stop === preceedingNodeID)
+        return link.succeedingNode;
+
+    });
+
+    // Code execution reaches this point if no link is found for the given
+    // preceedingNodeID.
+    return
+      log("Error: No next linked node found for preceedingNodeID: " + preceedingNodeID);
+
   };
+
+  // Get the previous node given a succeeding stop id in the route sequence.
+  this.getPreviousNode(succeedingNode){
+
+    // Resolve the node object into a stop id string if it is not already.
+    var succeedingNodeID = (typeof succeedingNode === "string" ? succeedingNode : succeedingNode.stop);
+
+    // Ability to use function without entering the preceedingNodeID if there
+    // is just a single node that is linked (should be most cases)
+    if (!succeedingNodeID && self.link.length > 0)
+      return log(
+        `Error: Cannot get prev node without succeeding
+        node id since more than a single node is linked.`
+      );
+
+    // If no succeedingNodeID passed we can assume that at this point in the
+    // code execution there is only one link so it should be safe to return
+    // the first item in the array.
+    if (!succeedingNodeID) return self.link[0].succeeding;
+
+    // PreceedingNodeID should be required at this point.
+    self.link.forEach(link => {
+
+      // Check to see if the ID matches any of the linked nodes for preceeding
+      // nodes. If it does, return the associated linked node.
+      if (link.succeedingNode.stop === succeedingNodeID)
+        return link.preceedingNode;
+
+    });
+
+    // Code execution reaches this point if no link is found for the given
+    // preceedingNodeID.
+    return
+      log("Error: No next linked node found for succeedingNodeID: " + succeedingNodeID);
+
+
+  }
 
   // This is used for the calculation of Edge ETA properties.
 
@@ -645,6 +739,5 @@ function arrayDifference(main, toTakeAway){
 function contains(array, item){
   return array.indexOf(item) !== -1;
 }
-
 
 module.exports = Node;
