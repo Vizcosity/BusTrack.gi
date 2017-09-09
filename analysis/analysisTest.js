@@ -1,3 +1,7 @@
-var analysis = require('./analysis.js');
+var analysisModule = require('./analysis.js');
 
-var analyze = new analysis([3]);
+var routeData = new analysisModule([3]);
+
+console.log("Analysis module set up.");
+
+console.log(routeData.getPath(3, 'BCH', 'MHE'));

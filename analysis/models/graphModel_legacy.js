@@ -9,7 +9,7 @@
  */
 
  // DEPENDENCIES
-const Graph = require('./graph.js');
+const Graph = require('js-graph/dist/js-graph.full.js');
 const INTERFACE = require('../../data-interface/data-interface-main.js');
 
 // MODELS
@@ -25,7 +25,6 @@ var routeSequence = routeMetaData.sequence;
 
 // Properties
 var _DEBUG = false;
-var _AVGETAPERIOD = 'day';
 
 // Prepare as a module.
 module.exports = graphModel;
@@ -34,7 +33,6 @@ function graphModel(route, properties){
 
   // Check for passed properties.
   if (properties && properties.debug) _DEBUG = true;
-  if (properties && properties.avgETAPeriod) _AVGETAPERIOD = properties.avgETAPeriod;
 
   // Reference to object instance.
   var self = this;
@@ -45,6 +43,20 @@ function graphModel(route, properties){
   // Save graph.
   this.graph = constructGraph(stopSequence, route);
 
+  // Check if there exists a path between two given stops / nodes.
+  this.hasPath = function(startStop, endStop) {
+
+    // Resolve stops to just the stop id if full node objects are passed.
+    var startStopID = (typeof startStop === "string" ? startStop : startStop.stop);
+    var endStopID = (typeof endStop === "string" ? endStop : endStop.stop);
+
+    return hasPath(startStopID, endStopID, stopSequence);
+
+  }
+
+  // Get path between two given stops / nodes.
+  this.getPath = getPath(startStop, endStop, prop, stopSequence);
+
   // At this point, the graph should now be constructed.
   // We can start to fill in the data for each (1) Node, and each (2) Edge.
   // To do this we must once again iterate through both all Nodes (Vertices)
@@ -53,14 +65,14 @@ function graphModel(route, properties){
   // Fill in the graph model with all of the log info for each stop,
   // and subsequently calculate all of the Node and Edge properties.
   log("Populating nodes with entries from stops & route.")
-  populateNodes(this.graph.vertices(), route, () => {
+  populateNodes(graphToVertexArray(this.graph), route, () => {
 
     log("Nodes populated for route: "+route+".");
 
     log("Attempting to process.");
 
     // For each vertex, process all of the entries that have been added.
-    processNodeEntries(this.graph.vertices());
+    processNodeEntries(graphToVertexArray(this.graph));
 
     log("Finished processing nodes.");
 
@@ -119,13 +131,82 @@ function hasPath(startStopID, endStopID, stopSequence){
 
 }
 
+// Calculates the path for a given start and end node.
+function getPath(startNode, endNode, opt, stopSequence){
+
+  // If no path between the two nodes, then return empty array (no path).
+  if (!hasPath(startNode, endNode, stopSequence)) return [];
+
+  // etaAvgPeriod is 'day' by default.
+  var etaAvgPeriod = 'day';
+  // Change if otherwise specified by passed argument.
+  if (opt && opt.etaAvgPeriod) etaAvgPeriod = opt.etaAvgPeriod;
+
+  // Construct the path array.
+  var path = [];
+
+  // Counter object used to keep track how many times a given node is traversed.
+  // If traversal incrementer exceeds number of linked nodes, then we have
+  // cycled through the whole graph and can conclude there is no path.
+  var traversalCounter = {};
+
+  // Set up our nodes.
+  var currentNode = startNode;
+  var previousNode = currentNode;
+
+  // Add the first node to the path array.
+  path.push(currentNode);
+
+  // Continue looping until current stop is end stop, or no stop found (
+  // current stop reached once again, but as startnode as a preceeding node).
+  while
+  (
+    (currentNode.stop !== endNode.stop)
+    &&
+    (traversalCounter[currentNode.stop] < currentNode.getLinkedNodes().length)
+  ){
+
+    // Create entry for traversal counter if it doesn't already exist.
+    if (!traversalCounter[currentNode.stop])
+      traversalCounter[currentNode.stop] = 0;
+
+    // Increment the traversalCounter.
+    traversalCounter[currentNode.stop]++;
+
+    // Get the previous node stop it to calculate the next node from current.
+    // (Preceeding node stop id).
+    var preceedingNode = previousNode;
+
+    // Set the previous node to the current node.
+    previousNode = currentNode;
+
+    // Get the next node in the sequence, according to the node it is coming
+    // from (preceeding node).
+    currentNode = currentNode.getNextNode(preceedingNode);
+
+    // Edge case: next node not found. (Incorrect node sequence set up likely).
+    if (!currentNode) {
+      log("Could not get next node from " + previousNode.stop + ".");
+      break;
+    }
+
+    // Push current node to the path array.
+    path.push(currentNode);
+
+  }
+
+  // Return the collected path.
+  return path;
+
+}
+
 // Takes in graph and processes all edges.
 function processEdges(graph){
 
-  graph.edges().forEach((edge) => {
+  graphToEdgeArray(graph).forEach((edge) => {
 
     // Process the edge.
-    processEdge(edge.element, graph);
+    processEdge(edge.value, graph);
 
   });
 
@@ -136,14 +217,20 @@ function processEdge(edge, graph){
 
   // Each edge should have linked the node from which the edge originates from,
   // and also terminates.
-  var sourceNode = graph.getVertexValue(edge.source);
-  var destNode = graph.getVertexValue(edge.destination);
+  var sourceNode = graph.vertexValue(edge.source);
+  var destNode = graph.vertexValue(edge.destination);
 
   // We need to find a matching pair of dates, where the following conditions apply:
   //  (1) The sourceNode date occurs before.
   //  (2) The destNode date occurs after.
   //  (3) The sourceNode date is a departure.
   //  (4) The destNode date is an arrival.
+
+  // console.log("SOURCE: ");
+  // console.log(sourceNode);
+  //
+  // console.log("DESTINATION: ");
+  // console.log(destNode);
 
   // Find all matching date pairs and add to an array.
   var datePairs = findDatePairs(sourceNode, destNode);
@@ -162,9 +249,8 @@ function processEdge(edge, graph){
 
   edge.recalculateETAs();
 
-  // After recalculating ETAs, set the weight of the edge.
-  edge.weight = edge.getETA(_AVGETAPERIOD);
-  
+  // And we are done!
+
 }
 
 // Utility method for the process edge function which constructs an array of
@@ -228,7 +314,7 @@ function processNodeEntries(nodes){
   nodes.forEach((node) => {
 
     // Call the process entry method attached to the node.
-    node.element.processEntries();
+    node.value.processEntries();
 
   });
 
@@ -259,7 +345,7 @@ function populateNodes(nodes, route, callback){
 function populateNodeWithBusStopLog(vertex, route, callback){
 
   // Determine which stop it is that we need to grab.
-  var stopID = vertex.id;
+  var stopID = vertex.key;
 
   log("Populating Node: " + stopID);
 
@@ -269,14 +355,14 @@ function populateNodeWithBusStopLog(vertex, route, callback){
     entries.forEach((entry) => {
 
       // Add the entry to the node.
-      vertex.element.addEntry(entry);
+      vertex.value.addEntry(entry);
 
     });
 
     // After we add all of the entries to the graph, we want to process all
     // of the additions.
     // vertex.value.processEntries();
-    log("Finished adding data to node: " + vertex.id + ". Processing now.");
+    log("Finished adding data to node: " + vertex.key + ". Processing now.");
 
     // Once Node has been properly filled + processed, we return the callback.
     // Adding the vertex for good measure, but probably won't be used.
@@ -303,9 +389,7 @@ function constructGraph(stopSequence, route){
         Route: '`+route+`'. Please fix sequence and re-model.
         `);
 
-    // Check to see if vertex exists. If it does, do not add it again.
-    if (graph.hasVertex(stopID)) return false;
-
+    // log("Adding vertex: " + stopID);
     graph.addVertex(stopID, new Node(stopID));
 
   });
@@ -316,9 +400,9 @@ function constructGraph(stopSequence, route){
   // once again to link each of the nodes together.
   stopSequence.forEach((stopID, i) => {
 
-    var previousNode = graph.getVertexValue(moduloArrayItem(stopSequence, i - 1));
-    var currentNode = graph.getVertexValue(stopID);
-    var nextNode = graph.getVertexValue(moduloArrayItem(stopSequence, i + 1));
+    var previousNode = graph.vertexValue(moduloArrayItem(stopSequence, i - 1));
+    var currentNode = graph.vertexValue(stopID);
+    var nextNode = graph.vertexValue(moduloArrayItem(stopSequence, i + 1));
 
     // Link the two nodes together.
     currentNode.linkNodes(previousNode, nextNode);
@@ -327,7 +411,7 @@ function constructGraph(stopSequence, route){
     var nextStopID = nextNode.stop;
 
     // Create edege link between nodes.
-    graph.addEdge(currentStopID, nextStopID, new Edge(currentStopID, nextStopID));
+    graph.addNewEdge(currentStopID, nextStopID, new Edge(currentStopID, nextStopID));
 
   });
 

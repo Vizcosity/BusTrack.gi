@@ -23,18 +23,20 @@ function AnalysisModule(routes, options){
   // Options for periodic recalculation.
   if (options && options.recalcperiod) _RECALCPERIOD = options.recalcperiod;
 
+  log("Constructing graphs.");
+
   // Construct the graphs for each route.
   var graphs = constructGraphs(routes);
+
+  log("Graphs constructed.");
 
   // Get the Path and ETA info for the journey specified.
   this.getPath = function(routeID, sourceStop, destStop, prop){
 
+    log("Getting path from: " + sourceStop + " to: " + destStop);
+
     // Reference to the graph being used for the current route.
     var graph = graphs[routeID].graph;
-
-    // The path / sequence of nodes desired for the journey from sourceStop
-    // to destStop.
-    var path = [];
 
     // If not specified, we use the daily ETA avg by default.
     var etaAvgPeriod = (prop && prop.etaAvgPeriod ? prop.etaAvgPeriod : 'day');
@@ -42,48 +44,21 @@ function AnalysisModule(routes, options){
     // Check if there exists a path between the two stops before calculating the ETA.
     if (!graph.hasPath(sourceStop, destStop)) return log("No path for stops entered.");
 
-    var ETASum = 0;
+    // Get the path array.
+    var path = graph.getShortestPath(sourceStop, destStop);
 
-    // Create node variables for the current node.
-    var prevNode = graph.vertexValue(sourceStop);
-    var currentNode = prevNode;
-
-    // Push the origin node to the path.
-    path.push(prevNode);
-
-    // Traverse graph from sourceStop until destStop is reached.
-    while(currentNode.stop !== destStop){
-
-      // Set prev node to the current node.
-      prevNode = currentNode;
-
-      // Get the next node.
-      currentNode = currentNode.next;
-
-      // Push current node to path array.
-      path.push(currentNode);
-
-      // Save next edge and eta value to variables.
-      var currentEdge = graph.edgeValue(prevNode.stop, currentNode.stop);
-      var currentETA  = currentEdge.getETA(etaAvgPeriod);
-
-      if (!currentETA) {console.log("No eta for edge: "); console.log(currentEdge);}
-
-      // Add ETA between prevNode & currentNode to the running ETA sum total.
-      ETASum += (currentETA ? currentETA : 0);
-
-    }
+    // Get ETA of whole path.
+    var pathETA = getPathETA(graph, path, etaAvgPeriod);
 
     // After the while loop terminates we have the ETA and the path.
     return {
       source: sourceStop,
       destination: destStop,
-      ETA: ETASum,
+      ETA: pathETA,
       path: path
-    }
+    };
 
   }
-
 
 }
 
@@ -107,10 +82,38 @@ function constructGraphs(routes){
 
 }
 
-// Finds the shortest path between two nodes.
-function findShortestPath(nodeOne, nodeTwo){
+// Calcuates the ETA for a passed path.
+function getPathETA(graph, path, etaAvgPeriod){
 
+  // This will hold the total ETA of the path and will be summed upon.
+  var ETASum = 0;
 
+  // If the path length is less than or equal to one, there can be no
+  // edges and as such the ETA must be 0 because there is no path, or the
+  // only entry in the path is a single stop, and as such there cannot be an ETA.
+  if (path.length <= 1) return 0;
+
+  // Loop through each item and get the edge between the current vertex and the next.
+  path.forEach((vertex, i) => {
+
+    // Skip the last element.
+    if (i === path.length - 1) return false;
+
+    // Get the edge value.
+    var edge = graph.getEdge(vertex, path[i + 1]);
+
+    console.log(edge);
+
+    // Get the ETA Sum.
+    var ETA = edge.getETA(etaAvgPeriod);
+
+    // Add ETA to the ETASum.
+    ETASum += ETA;
+
+  });
+
+  // Return the ETA Sum.
+  return ETASum;
 
 }
 

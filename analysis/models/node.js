@@ -234,7 +234,7 @@ function Node(stop, prevNode, nextNode){
   }
 
   // Set the previous or next connected node. (Origin / Source).
-  this.linkNode(preceedingNode, succeedingNode){
+  this.linkNodes = function(preceedingNode, succeedingNode){
 
     // Check to see if the link already exists.
     // If the link does exist, return prematurely.
@@ -256,8 +256,16 @@ function Node(stop, prevNode, nextNode){
 
   };
 
+  // Return all the linked nodes for this node.
+  this.getLinkedNodes = function(){
+
+    // Return linked nodes.
+    return self.link;
+
+  }
+
   // Get the next node in the sequence. Takes in the preceeding node.
-  this.getNextNode(preceedingNode){
+  this.getNextNode = function(preceedingNode){
 
     // Resolve node object into a string stop id if it is not already.
     var preceedingNodeID = (typeof preceedingNode === "string" ? preceedingNode : preceedingNode.stop);
@@ -293,7 +301,7 @@ function Node(stop, prevNode, nextNode){
   };
 
   // Get the previous node given a succeeding stop id in the route sequence.
-  this.getPreviousNode(succeedingNode){
+  this.getPreviousNode = function(succeedingNode){
 
     // Resolve the node object into a stop id string if it is not already.
     var succeedingNodeID = (typeof succeedingNode === "string" ? succeedingNode : succeedingNode.stop);
