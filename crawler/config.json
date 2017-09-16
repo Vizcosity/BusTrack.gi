@@ -1,4 +1,24 @@
 {
+  "scrape": {
+    "routes": [
+      1,
+      2,
+      3,
+      4,
+      7,
+      8,
+      9
+    ],
+    "url": {
+      "base": "http://track.bus.gi/routeInfo.php",
+      "parameters": {
+        "id": "Number"
+      }
+    },
+    "parse": {
+      "dateTimeFormat": "DD/MM/YYYY HH:mm:ss"
+    }
+  },
   "crawlInterval": 30000,
   "routes": [
     1,
