@@ -52,9 +52,16 @@ function runCrawl(routeNumArray){
       // Notify of insertion to DB.
       log("Adding Route["+route+"] data to the DB.");
 
+      console.log(routeData);
+
       // Add to DB and run next crawl on callback.
-      dbInterface.insert(routeData, () => {
-          log("Successfully added ROUTE: ["+route+"] crawl info to DB.");
+      dbInterface.insert(routeData, (err) => {
+
+          // Error / success reporting.
+          if (!err) log("Successfully added ROUTE: ["+route+"] crawl info to DB.")
+          else log(`Could not add ${route}: ${err}`);
+
+          // Recursively call runCrawl.
           runCrawl(routeNumArray);
       });
     });
@@ -64,8 +71,10 @@ function runCrawl(routeNumArray){
 // Get the route info.
 function scrapeRoute(routeNumber, callback){
 
+  console.log(`Scraping: ${routeNumber}`)
+
   // Prepare the url.
-  var url = config.scrape.url.base + "?" + querystring.stringify({id: 1, sys: 1});
+  var url = config.scrape.url.base + "?" + querystring.stringify({id: routeNumber, sys: 1});
 
   // Get the page.
   getPage(url, ($) => {
@@ -133,7 +142,7 @@ function DataEntry(routeID, stopID, pingDate, pageDate, isAtStop, scrapeInterval
   this.scrapeInterval = scrapeInterval;
 
   // Used for debugging / accuracy checking.
-  this.rawscrape = rawscrape;
+  this.rawScrape = rawscrape;
 
 }
 
@@ -157,6 +166,9 @@ function createDataEntryObjects(routeID, pageDate, busesInfo){
   var dataEntries = [];
 
   buses.forEach(bus => {
+
+    // Skip the current iteration if pingDate is null.
+    if (!bus.pingDate) return false;
 
     // Push new data entry to the output array for each bus item in the buses
     // array.
@@ -234,7 +246,8 @@ function getStopID(stopName){
   stopName = stopName.replace(' Bus Stop', '');
 
   // Reference parse module.
-  return parse.resolveBusStopName(stopName);
+  // return parse.resolveBusStopName(stopName);
+  return stopName;
 
 }
 
