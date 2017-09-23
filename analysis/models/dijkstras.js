@@ -75,9 +75,15 @@ function dijkstras(startNode, endNode, graph, Graph){
         through: currentNode
       };
 
+      console.log("Existing Distance Info: ");
+      console.log(existingDistanceInfo);
+
       // Compare the two distances and choose to record the shortest.
       if (newDistanceInfo.val < existingDistanceInfo.val)
         distance[vertex] = newDistanceInfo;
+
+      console.log("New distance Info: ");
+      console.log(newDistanceInfo);
 
     });
 
@@ -146,6 +152,8 @@ function getNearestVertex(graph, startVertex){
 
   var connectedVertices = graph.getVerticesFrom(startVertex);
 
+  console.log(connectedVertices);
+
   // Gets the nearest vertex based off of the weights of the associated edges.
   Object.keys(connectedVertices).forEach(id => {
 
@@ -164,7 +172,10 @@ function getNearestVertex(graph, startVertex){
 
   });
 
+  console.log("Nearest vertex: ");
+  console.log(nearestVertex);
+
   // After the iteration, return the result.
-  return (nearestVertex ? nearestVertex.vertex : nearestVertex);
+  return (nearestVertex ? nearestVertex.destination : nearestVertex);
 
 }

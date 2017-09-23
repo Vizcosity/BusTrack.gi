@@ -86,7 +86,7 @@ function dataInterfaceMain(dbName){
   // Returns subset of logs recorded at a specified timeframe.
   this.getBusesLoggedBetween = function(date1, date2, cb){
     checkDB(dbName);
-    db.query("SELECT * FROM stoplog WHERE logdate BETWEEN '"+date1+"' AND '"+date2+"'", (err, data) => {
+    db.query("SELECT * FROM buses.log WHERE logdate BETWEEN '"+date1+"' AND '"+date2+"'", (err, data) => {
       if (err) log("Failed to get buses logged between dates: ["+date1+"] and ["+date2+"]: " + err);
       if (!cb) return log("No callback found for 'getBusesLoggedBetween' call.");
       return cb(data.rows);
@@ -96,7 +96,7 @@ function dataInterfaceMain(dbName){
   // Returns all routeIDs which support the passed stopID.
   this.getRoutesWhichSupportStop = function(stopID, cb){
     checkDB(dbName);
-    db.query("SELECT DISTINCT routeID FROM stoplog where stopID='"+stopID+"'", (err, data) => {
+    db.query("SELECT DISTINCT routeID FROM buses.log where stopID='"+stopID+"'", (err, data) => {
       if (err) log("Failed to get supported routes for stopID ["+stopID+"]: " + err);
       if (!cb) return log("No callback found for 'getRoutesWhichSupportStopID' call.");
       return cb(data.rows);
@@ -106,7 +106,7 @@ function dataInterfaceMain(dbName){
   // Returns all stopIDs which are supported by a given routeID.
   this.getStopsSupportedByRoute = function(routeID, cb){
     checkDB(dbName);
-    db.query("SELECT DISTINCT stopID FROM stoplog where routeID="+routeID, (err, data) => {
+    db.query("SELECT DISTINCT stopID FROM buses.log where routeID="+routeID, (err, data) => {
 
       if (err) log("Failed to get supported routes for routeID ["+routeID+"]: " + err);
       if (!cb) return log("No callback found for 'getStopsSupportedByRoute' call.");
@@ -130,8 +130,8 @@ function dataInterfaceMain(dbName){
   this.getRouteHistory = function(routeID, cb){
     checkDB(dbName);
 
-    db.query("SELECT * FROM stoplog WHERE routeID="+routeID, (err, data) => {
-      if (err) log("Failed to get stoplog for routeID ["+routeID+"]: " + err);
+    db.query("SELECT * FROM buses.log WHERE routeID="+routeID, (err, data) => {
+      if (err) log("Failed to get log for routeID ["+routeID+"]: " + err);
       if (!cb) return log("No callback found for 'getRouteHistory' call.");
 
       return cb(data.rows);
@@ -144,9 +144,9 @@ function dataInterfaceMain(dbName){
 
     checkDB(dbName);
 
-    db.query("SELECT * FROM stoplog WHERE stopID='"+stopID+"'", (err, data) => {
+    db.query("SELECT * FROM buses.log WHERE stopID='"+stopID+"'", (err, data) => {
 
-      if (err) log("Failed to get stoplog for stopID ["+stopID+"]: " + err);
+      if (err) log("Failed to get log for stopID ["+stopID+"]: " + err);
       if (!cb) return log("No callback found for 'getStopHistory' call.");
 
       return cb(data.rows);
@@ -160,9 +160,9 @@ function dataInterfaceMain(dbName){
 
     // checkDB(dbName);
 
-    db.query("SELECT * FROM stoplog WHERE stopID='"+stopID+"' AND routeID="+routeID, (err, data) => {
+    db.query("SELECT * FROM buses.log WHERE stopID='"+stopID+"' AND routeID="+routeID, (err, data) => {
 
-      if (err) log("Failed to get stoplog for stopID ["+stopID+"]: " + err);
+      if (err) log("Failed to get log for stopID ["+stopID+"]: " + err);
       if (!cb) return log("No callback found for 'getStopAndRouteEntries' call.");
 
       return cb(data.rows);
@@ -182,10 +182,10 @@ function log(msg){
 }
 
 function checkDB(dbName){
-  if (dbName !== "stoplog")
+  if (dbName !== "buses.log")
     return
       log(`[WARN] Current data interface is configured with 'live'.
-            Current request uses 'stoplog' table. Please use correct INTERFACE.`);
+            Current request uses 'buses.log' table. Please use correct INTERFACE.`);
 }
 
 function Result(data){

@@ -149,11 +149,17 @@ function Graph(){
     if (!this.hasVertex(source) || !this.hasVertex(dest))
       throw new Error("One or more vertices not defined.");
 
+    // Create the edge object.
+    var edgeToAdd = new Edge(this.getVertex(source), this.getVertex(dest), element);
+
+    // Push edge to edges array.
+    edges.push(edgeToAdd);
+
     // Add dest to source vertex.
-    this.getVertex(source).verticesFrom[dest] = new Edge(this.getVertex(dest), element);
+    this.getVertex(source).verticesFrom[dest] = edgeToAdd;
 
     // Add source to dest.
-    this.getVertex(dest).verticesTo[source] = new Edge(this.getVertex(source), element);
+    this.getVertex(dest).verticesTo[source] = edgeToAdd;
 
   }
 
@@ -202,41 +208,45 @@ function Graph(){
   // Returns all edges.
   this.edges = function(){
 
-    var output = [];
+    // var output = [];
 
-    this.vertices().forEach(vertexObj => {
-
-      var verticesTo = vertexObj.verticesTo;
-      var verticesFrom = vertexObj.verticesFrom;
-
-      Object.keys(verticesTo).forEach(key => {
-
-        var edge = verticesTo[key];
-
-        output.push({
-          source: vertexObj,
-          dest: edge.vertex,
-          element: edge.element
-        });
-
-      });
-
-      Object.keys(verticesFrom).forEach(key => {
-
-        var edge = verticesFrom[key];
-
-        output.push({
-          source: edge.vertex,
-          dest: vertexObj,
-          element: edge.element
-        });
-
-      });
-
-    });
+    // this.vertices().forEach(vertexObj => {
+    //
+    //   var verticesTo = vertexObj.verticesTo;
+    //   var verticesFrom = vertexObj.verticesFrom;
+    //
+    //   Object.keys(verticesTo).forEach(key => {
+    //
+    //     var edge = verticesTo[key];
+    //
+    //     output.push({
+    //       type: "to",
+    //       source: edge.source,
+    //       dest: edge.destination,
+    //       element: edge.element
+    //     });
+    //
+    //   });
+    //
+    //   Object.keys(verticesFrom).forEach(key => {
+    //
+    //     var edge = verticesFrom[key];
+    //
+    //     output.push({
+    //       type: "from",
+    //       source: edge.source,
+    //       dest: edge.destination,
+    //       element: edge.element
+    //     });
+    //
+    //   });
+    //
+    // });
 
     // Return output.
-    return output;
+    // return output;
+
+    return edges;
 
   }
 
@@ -276,9 +286,10 @@ function Vertex(id, element){
 }
 
 // Edge object.
-function Edge(vertex, element){
+function Edge(sourceVertex, destVertex, element){
 
-  this.vertex = vertex;
+  this.source = sourceVertex;
+  this.destination = destVertex;
   this.element = element;
 
 }

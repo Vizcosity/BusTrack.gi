@@ -32,6 +32,9 @@ module.exports = graphModel;
 
 function graphModel(route, properties){
 
+  // Check to see that a route is passed.
+  if (!route) throw new Error("No route passed.");
+
   // Check for passed properties.
   if (properties && properties.debug) _DEBUG = true;
   if (properties && properties.avgETAPeriod) _AVGETAPERIOD = properties.avgETAPeriod;
@@ -75,20 +78,6 @@ function graphModel(route, properties){
 
   //TODO: PROCESS GRPAH NODES & EDGES; FILL IN WITH DATA FOR NODE & EDGE.
   //TODO: IMPLEMENT NODE OBJECT CONSTRUCTOR.
-
-
-
-  // Object Utility.
-
-  // Return all of the vetices as an array.
-  this.vertexArray = function(){
-    return graphToVertexArray(self.graph);
-  }
-
-  // Return all of the edges of the graph as an array.
-  this.edgeArray = function(){
-    return graphToEdgeArray(self.graph);
-  }
 
 }
 
@@ -164,7 +153,7 @@ function processEdge(edge, graph){
 
   // After recalculating ETAs, set the weight of the edge.
   edge.weight = edge.getETA(_AVGETAPERIOD);
-  
+
 }
 
 // Utility method for the process edge function which constructs an array of
@@ -326,39 +315,12 @@ function constructGraph(stopSequence, route){
     var currentStopID = currentNode.stop;
     var nextStopID = nextNode.stop;
 
+    log("Current stopID: " + currentStopID + " [i = "+(i)+"], Next stopID: " + nextStopID + " [i = "+(i+1)+"]");
+
     // Create edege link between nodes.
     graph.addEdge(currentStopID, nextStopID, new Edge(currentStopID, nextStopID));
 
   });
-
-  // Once we have created all the vertexes / nodes, we need to create all of the edges.
-  // var vertices = graphToVertexArray(graph);
-  //
-  // // For each vertex, find the destination vertex and add a directed Edge between
-  // // the two vertices.
-  // vertices.forEach((vertex) => {
-  //
-  //   var stopID = vertex.key;
-  //   var nextStopID = getNextStop(stopSequence, stopID);
-  //
-  //   // Check for broken links.
-  //   if (!nextStopID)
-  //     return log(`
-  //       [ERROR] Attempt to get next stop for stopID: '`+stopID+`' has failed.
-  //       Route: '`+route+`'. Please fix sequence and re-model.
-  //     `);
-  //
-  //   // Add the edge object.
-  //   graph.addNewEdge(stopID, nextStopID, new Edge(stopID, nextStopID));
-  //
-  //   // Link the prev & next nodes.
-  //   vertex.value.setNextNode(graph.vertexValue(nextStopID));
-  //   graph.vertexValue(nextStopID).setPrevNode(vertex.value);
-  //
-  //   // Set the next node link for the current node.
-  //   vertex.value.linkNode();
-  //
-  // });
 
   // Once the base graph has been constructed we can return it.
   return graph;
@@ -368,8 +330,16 @@ function constructGraph(stopSequence, route){
 // Get array item with modular arithmetic.
 function moduloArrayItem(array, i){
 
+  var index;
+
+  if (i < 0) {
+    index = array.length - (Math.abs(i) % array.length);
+    return moduloArrayItem(array, index);
+  }
+  else index = Math.abs(i) % array.length;
+
   // Return!
-  return array[Math.abs(i) % array.length];
+  return array[index];
 
 }
 

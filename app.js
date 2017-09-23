@@ -13,7 +13,7 @@ log("Loading modules...", 'progress');
 // Dependencies.
 const fork = require('child_process').fork;
 
-const CRAWLER = fork("./crawler/main.js");
+const CRAWLER = fork("./crawler/app.js");
 log("Crawler running... OK");
 log("Data API running... OK");
 log("Front end web server running... OK");

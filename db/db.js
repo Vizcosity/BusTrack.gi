@@ -1,14 +1,14 @@
 /**
- *  INTERFACE / wrapper FOR bustrack DATABASE.
+ *  DB Interface.
+ *
+ *  Created for theHop.
+ *
+ *  Aaron Baw @ 2017
  */
 function db() {
 const { Pool } = require("pg");
 
-const connectionDetails = {
-  host: 'localhost',
-  port: '5432',
-  database: 'bustrack'
-};
+const connectionDetails = require('./dbConfig');
 
 const pool = new Pool(connectionDetails);
 

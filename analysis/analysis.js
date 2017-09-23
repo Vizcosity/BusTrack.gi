@@ -97,12 +97,16 @@ function getPathETA(graph, path, etaAvgPeriod){
   path.forEach((vertex, i) => {
 
     // Skip the last element.
-    if (i === path.length - 1) return false;
+    if (i === path.length - 1 || !vertex) return false;
 
     // Get the edge value.
     var edge = graph.getEdge(vertex, path[i + 1]);
 
+    console.log(vertex + " --> " + path[i + 1]);
+
     console.log(edge);
+
+    if (!edge) return false;
 
     // Get the ETA Sum.
     var ETA = edge.getETA(etaAvgPeriod);
