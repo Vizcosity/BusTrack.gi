@@ -27,10 +27,10 @@ log("Initializing crawler.");
 log("Loading ROUTES: " + config.routes.toString() + ". Starting crawl process with Interval ["+_SCRAPEINTERVAL+"]");
 
 // Set a recurring crawl.
-// setInterval(function(){
+setInterval(function(){
   var routes = arrCopy(config.routes);
   runCrawl(routes);
-// }, _SCRAPEINTERVAL);
+}, _SCRAPEINTERVAL);
 
 
 // Define the crawl function which will open the webpage for each bus route and scrape
