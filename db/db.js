@@ -24,11 +24,18 @@ connectToPool(pool, (err, client, done) => {
 
     checkPool(pool, (connection) => {
 
+      // On fail / connection error, retry the query.
+      if (connection.err) {
+        log(`Connection failed. ${connection.err} \n Retrying query...`);
+        return this.query(statement, callback);
+      }
+
+      // Run query only if callback present.
       if (callback)
         connection.client.query(statement, (err, data) => {
 
           if (err) {
-            connection.done();
+            // connection.done();
             log("Error executing query: " + statement);
             console.log(err);
           }
