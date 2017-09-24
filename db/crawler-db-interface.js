@@ -69,7 +69,7 @@ function generateInsertionQueryString(entries){
   var resetIDSequenceQuery = generateReassignIndecesQueryString(liveTableName);
 
   // Return the final built query for execution.
-  return `${preQuery}\n ${mainQuery}\n ${resetIDSequenceQuery}`;
+  return `${preQuery}\n ${resetIDSequenceQuery}\n ${mainQuery}`;
 
 }
 
