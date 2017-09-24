@@ -28,7 +28,7 @@ module.exports = function getWebpage(url, callback, timeout){
   // Request the URL.
   request.get(url, (err, response, html) => {
 
-    if (err) throw Error(err);
+    if (err) return Error(err);
 
     // Prepare jQuery object.
     var jQueryPage = cheerio.load(html);
@@ -40,7 +40,7 @@ module.exports = function getWebpage(url, callback, timeout){
       return callback(jQueryPage);
 
     }, _TIMEOUT);
-    
+
   });
 
 }

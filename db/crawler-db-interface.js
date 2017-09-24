@@ -30,18 +30,58 @@ function crawlerDBInterface(){
     // If the entries object is empty, return a null / false.
     if (!entries || entries.length === 0) return callback(null);
 
-    // Build the query string.
-    var query = generateInsertionQueryString(entries);
+    // Get query stack to be executed.
+    var queries = generateInsertionQueryStack(entries);
 
-    // Execute query.
-    db.query(query, (err, data) => {
+    // Execute query stack.
+    executeQueryStack(queries, db, callback);
 
-      // Return callback.
-      return callback(err, data);
 
-    });
 
   }
+
+}
+
+// Recursively executes the query stack passed, one by one.
+function executeQueryStack(stack, db, callback){
+
+  // Base case: on empty or null stack, return.
+  if (!stack || stack.length === 0) return callback();
+
+  // Get current item.
+  var ci = stack.shift();
+
+  // Execute the query.
+  db.query(ci, (err, data) => {
+    // Check for errors.
+    if (err) console.log(err);
+    // Recursively call parent on callback.
+    executeQueryStack(stack, db, callback);
+  });
+
+}
+
+// Generates the insertion queries as seperate queries, an array that needs to
+// be executed per item.
+function generateInsertionQueryStack(entries){
+
+  // Output query stack.
+  var output = [];
+
+  // Construct columnNames with the first entry passed.
+  var columnNames = generateColumnNames(entries[0]);
+
+  // preQuery.
+  output.push(generateLiveFlushQueryString(entries));
+
+  // resetIDSequenceQuery.
+  output.push(generateReassignIndecesQueryString(liveTableName));
+
+  output.push(generateInsertionQueryStringComponents(logTableName, columnNames, entries));
+  output.push(generateInsertionQueryStringComponents(liveTableName, columnNames, entries));
+
+  // Return query stack / array for execution.
+  return output;
 
 }
 
