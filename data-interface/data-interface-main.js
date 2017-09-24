@@ -9,7 +9,7 @@ function dataInterfaceMain(dbName){
 
   // Set the default DBName to live if not specified.
   // Perhaps useful for interaction with analysis later on.
-  if (!dbName) dbName = 'live';
+  if (!dbName) dbName = 'buses.live';
 
   // First we set up a connection to the DB!
   const DB = require("../db/db.js");
@@ -23,17 +23,56 @@ function dataInterfaceMain(dbName){
 
   // Returns all the buses.
   this.getAllBuses = function(cb){
-    db.query("SELECT * FROM "+dbName, (err, data) =>  {
-      if (err) log("Failed to get all buses: " + err);
-      if (!cb) return log("No callback found for 'getAllBuses' call.");
-      return cb(data.rows);
-    });
-  };
+    db.query(`
+      SELECT
+        b.id,
+        b."pingDate",
+        b."pageDate",
+        b."scrapeDate",
+        r."name" as "route",
+        s."name" as "stopName",
+        s."abbreviation" as "stopAbbreviation",
+        b."isAtStop",
+        b."scrapeInterval"
+        FROM ${dbName} b
+        JOIN buses.stop_info s
+        ON b."stopID"=s.id
+        JOIN buses.route_info r
+        ON b."routeID" = r.id;
+    `, (err, data) =>  {
+          if (err) log("Failed to get all buses: " + err);
+          if (!cb) return log("No callback found for 'getAllBuses' call.");
+          return cb(data.rows);
+        });
+      };
 
   // Returns all the buses currently at a given stop.
-  this.getBusesAtStop = function(stopID, cb){
-    db.query("SELECT * FROM "+dbName+" WHERE stopID='"+stopID+"'", (err, data) =>  {
-      if (err) log("Failed to get buses at stop ['"+stopID+"']: " + err);
+  this.getBusesAtStop = function(stop, cb){
+
+    // If property type is not specifed, assume that the stop abbreviation has been
+    // passed.
+    stop = parseStopArg(stop);
+
+    db.query(`
+      SELECT
+        b.id,
+        b."pingDate",
+        b."pageDate",
+        b."scrapeDate",
+        r."name" as "route",
+        s."name" as "stopName",
+        s."abbreviation" as "stopAbbreviation",
+        b."isAtStop",
+        b."scrapeInterval"
+        FROM ${dbName} b
+        JOIN buses.stop_info s
+        ON b."stopID"=s.id
+        JOIN buses.route_info r
+        ON b."routeID" = r.id
+        WHERE b."stopID"=
+          (SELECT id FROM buses.stop_info WHERE "${stop.property}"='${stop.value}');
+      `, (err, data) =>  {
+      if (err) log(`Failed to get buses at ${stop.property}: ${stop.value}: ${err}`);
       if (!cb) return log("No callback found for 'getBusesAtStop' call.");
       return cb(data.rows);
     });
@@ -48,9 +87,32 @@ function dataInterfaceMain(dbName){
   };
 
   // Returns all the buses and their locations on the routeID specified.
-  this.getBusesOnRoute = function(routeID, cb){
-    db.query("SELECT * FROM "+dbName+" WHERE routeID="+routeID, (err, data) =>  {
-      if (err) log("Failed to get buses on routeID ["+routeID+"]: " + err);
+  this.getBusesOnRoute = function(route, cb){
+
+    // If property type is not specifed, assume that the route name has been
+    // passed.
+    route = parseRouteArg(route);
+
+    db.query(`
+      SELECT
+        b.id,
+        b."pingDate",
+        b."pageDate",
+        b."scrapeDate",
+        r."name" as "route",
+        s."name" as "stopName",
+        s."abbreviation" as "stopAbbreviation",
+        b."isAtStop",
+        b."scrapeInterval"
+        FROM ${dbName} b
+        JOIN buses.stop_info s
+        ON b."stopID"=s.id
+        JOIN buses.route_info r
+        ON b."routeID" = r.id
+        WHERE b."routeID"=
+          (SELECT id FROM buses.route_info WHERE "${route.property}"='${route.value}');
+      `, (err, data) =>  {
+      if (err) log(`Failed to get buses on route.${route.property}: ${route.value}: ${err}`);
       if (!cb) return log("No callback found for 'getBusesOnRouteID' call.");
       return cb(data.rows);
     });
@@ -58,12 +120,40 @@ function dataInterfaceMain(dbName){
 
   // Returns all the buses that are currently waiting at a stop.
   this.getWaitingBuses = function(cb){
-    db.query("SELECT * FROM "+dbName+" WHERE atStop=true", (err, data) =>  {
+    db.query(`
+      SELECT
+        b.id,
+        b."pingDate",
+        b."pageDate",
+        b."scrapeDate",
+        r."name" as "route",
+        s."name" as "stopName",
+        s."abbreviation" as "stopAbbreviation",
+        b."isAtStop",
+        b."scrapeInterval"
+        FROM ${dbName} b
+        JOIN buses.stop_info s
+        ON b."stopID"=s.id
+        JOIN buses.route_info r
+        ON b."routeID" = r.id
+        WHERE b."isAtStop"=true;
+      `, (err, data) =>  {
       if (err) log("Failed to get waiting buses: " + err);
       if (!cb) return log("No callback found for 'getWaitingBuses' call.");
       return cb(data.rows);
     });
   };
+
+  // Returns subset of logs which have been recorded this hour.
+  this.getBusesLoggedWithinThisHour = function(cb){
+
+    var startOfHour = moment().startOf('hour').format();
+    var endOfHour = moment().endOf('hour').format();
+    this.getBusesLoggedBetween(startOfHour, endOfHour, (data) => {
+      return cb(data);
+    });
+
+  }
 
   // Returns subset of logs which have all logs recorded today.
   this.getBusesLoggedToday = function(cb){
@@ -85,18 +175,50 @@ function dataInterfaceMain(dbName){
 
   // Returns subset of logs recorded at a specified timeframe.
   this.getBusesLoggedBetween = function(date1, date2, cb){
+
+    // Check DB since this query designed for the buses.log table.
     checkDB(dbName);
-    db.query("SELECT * FROM buses.log WHERE logdate BETWEEN '"+date1+"' AND '"+date2+"'", (err, data) => {
+
+    db.query(`
+      SELECT
+      b.id,
+      b."pingDate",
+      b."pageDate",
+      b."scrapeDate",
+      r."name" as "route",
+      s."name" as "stopName",
+      s."abbreviation" as "stopAbbreviation",
+      b."isAtStop",
+      b."scrapeInterval"
+      FROM ${dbName} b
+      JOIN buses.stop_info s
+      ON b."stopID"=s.id
+      JOIN buses.route_info r
+      ON b."routeID" = r.id
+      WHERE "pingDate" BETWEEN '${date1}' AND '${date2}';
+      `, (err, data) => {
       if (err) log("Failed to get buses logged between dates: ["+date1+"] and ["+date2+"]: " + err);
       if (!cb) return log("No callback found for 'getBusesLoggedBetween' call.");
       return cb(data.rows);
     });
+
   };
 
   // Returns all routeIDs which support the passed stopID.
-  this.getRoutesWhichSupportStop = function(stopID, cb){
-    checkDB(dbName);
-    db.query("SELECT DISTINCT routeID FROM buses.log where stopID='"+stopID+"'", (err, data) => {
+  this.getRoutesWhichSupportStop = function(stop, cb){
+
+    // NOTE: Use full stop name where possible, as abbreviations sometime
+    // have the same value for more than one stop and may break query.
+    // Use abbreviation if speified object is not passed:
+    stop = parseStopArg(stop);
+
+    db.query(`
+      SELECT DISTINCT r."name" AS "route", b."routeID" AS "routeID"
+      FROM buses.log b
+      JOIN buses.route_info r
+      ON b."routeID" = r.id
+      WHERE b."stopID" = (SELECT id FROM buses.stop_info WHERE ${stop.property}='${stop.value}');
+      `, (err, data) => {
       if (err) log("Failed to get supported routes for stopID ["+stopID+"]: " + err);
       if (!cb) return log("No callback found for 'getRoutesWhichSupportStopID' call.");
       return cb(data.rows);
@@ -105,33 +227,47 @@ function dataInterfaceMain(dbName){
 
   // Returns all stopIDs which are supported by a given routeID.
   this.getStopsSupportedByRoute = function(routeID, cb){
-    checkDB(dbName);
-    db.query("SELECT DISTINCT stopID FROM buses.log where routeID="+routeID, (err, data) => {
+
+    db.query(`
+      SELECT DISTINCT s."name" AS "stopName", s."abbreviation" as "stopAbbreviation", b."stopID" AS "stopID"
+      FROM buses.log b
+      JOIN buses.stop_info s
+      ON b."stopID" = s.id
+      WHERE b."routeID" = (SELECT id FROM buses.route_info WHERE name='${routeID}');
+      `, (err, data) => {
 
       if (err) log("Failed to get supported routes for routeID ["+routeID+"]: " + err);
       if (!cb) return log("No callback found for 'getStopsSupportedByRoute' call.");
-
-      if (data.rows && data.rows[0] && data.rows[0].stopid){
-
-        // Prepare all the Stop objects for being returned as an array.
-        var output = [];
-        for (var i = 0; i < data.rows.length; i++){
-          output.push(new Stop(data.rows[i].stopid));
-        }
-
-        return cb(output);
-      }
 
       return cb(data.rows);
     });
   };
 
   // Returns a history of buses logged on this route.
-  this.getRouteHistory = function(routeID, cb){
-    checkDB(dbName);
+  this.getRouteHistory = function(route, cb){
 
-    db.query("SELECT * FROM buses.log WHERE routeID="+routeID, (err, data) => {
-      if (err) log("Failed to get log for routeID ["+routeID+"]: " + err);
+    // Parse route argument.
+    route = parseRouteArg(route);
+
+    db.query(`
+      SELECT
+        b.id,
+        b."pingDate",
+        b."pageDate",
+        b."scrapeDate",
+        r."name" as "route",
+        s."name" as "stopName",
+        s."abbreviation" as "stopAbbreviation",
+        b."isAtStop",
+        b."scrapeInterval"
+        FROM buses.log b
+        JOIN buses.stop_info s
+        ON b."stopID"=s.id
+        JOIN buses.route_info r
+        ON b."routeID" = r.id
+        WHERE b."routeID"=(SELECT id FROM buses.route_info WHERE "${route.property}"='${route.value}');
+      `, (err, data) => {
+      if (err) log(`Failed to get route history for route:${route.value}: ${err}`);
       if (!cb) return log("No callback found for 'getRouteHistory' call.");
 
       return cb(data.rows);
@@ -140,13 +276,31 @@ function dataInterfaceMain(dbName){
   };
 
   // Returns a history of buses logged at this stop.
-  this.getStopHistory = function(stopID, cb){
+  this.getStopHistory = function(stop, cb){
 
-    checkDB(dbName);
+    // Parse stop object.
+    stop = parseStopArg(stop);
 
-    db.query("SELECT * FROM buses.log WHERE stopID='"+stopID+"'", (err, data) => {
+    db.query(`
+      SELECT
+        b.id,
+        b."pingDate",
+        b."pageDate",
+        b."scrapeDate",
+        r."name" as "route",
+        s."name" as "stopName",
+        s."abbreviation" as "stopAbbreviation",
+        b."isAtStop",
+        b."scrapeInterval"
+        FROM buses.log b
+        JOIN buses.stop_info s
+        ON b."stopID"=s.id
+        JOIN buses.route_info r
+        ON b."routeID" = r.id
+        WHERE b."stopID"=(SELECT id FROM buses.stop_info WHERE "${stop.property}"='${stop.value}');
+      `, (err, data) => {
 
-      if (err) log("Failed to get log for stopID ["+stopID+"]: " + err);
+      if (err) log(`Failed to get log history for ${stop.value}: ${err}`);
       if (!cb) return log("No callback found for 'getStopHistory' call.");
 
       return cb(data.rows);
@@ -156,13 +310,36 @@ function dataInterfaceMain(dbName){
   };
 
   // Returns all the entries for a passed stopID & routeID.
-  this.getStopAndRouteEntries = function(stopID, routeID, cb){
+  this.getStopAndRouteEntries = function(stop, route, cb){
 
-    // checkDB(dbName);
+    // Pares the stop and route arguments.
+    stop = parseStopArg(stop);
+    route = parseRouteArg(route);
 
-    db.query("SELECT * FROM buses.log WHERE stopID='"+stopID+"' AND routeID="+routeID, (err, data) => {
+    checkDB(dbName);
 
-      if (err) log("Failed to get log for stopID ["+stopID+"]: " + err);
+    db.query(`
+      SELECT
+        b.id,
+        b."pingDate",
+        b."pageDate",
+        b."scrapeDate",
+        r."name" as "route",
+        s."name" as "stopName",
+        s."abbreviation" as "stopAbbreviation",
+        b."isAtStop",
+        b."scrapeInterval"
+        FROM ${dbName} b
+        JOIN buses.stop_info s
+        ON b."stopID"=s.id
+        JOIN buses.route_info r
+        ON b."routeID" = r.id
+        WHERE b."routeID"=(SELECT id FROM buses.route_info WHERE "${route.property}"='${route.value}')
+        AND
+        b."stopID"=(SELECT id FROM buses.stop_info WHERE "${stop.property}"='${stop.value}');
+      `, (err, data) => {
+
+      if (err) log(`Failed to getStopAndRouteEntries for stop: ${stop.value} and route: ${route.value} : ${err}`);
       if (!cb) return log("No callback found for 'getStopAndRouteEntries' call.");
 
       return cb(data.rows);
@@ -186,6 +363,31 @@ function checkDB(dbName){
     return
       log(`[WARN] Current data interface is configured with 'live'.
             Current request uses 'buses.log' table. Please use correct INTERFACE.`);
+}
+
+// Allows for just a route name to be passed, if specific property name is not
+// specified.
+function parseRouteArg(route){
+  if (!route.value || !route.property) {
+    var temp = route;
+    route = {
+      property: 'name',
+      value: temp
+    }
+  }
+  return route;
+}
+
+// If the stop property to be queried for is not specified, assumes that a
+// stop abbreviation has been passed.
+function parseStopArg(stop){
+  if (!stop.property || !stop.value) {
+    var temp = stop;
+    stop = {
+      value: stop,
+      property: 'abbreviation'
+    };
+  }
 }
 
 function Result(data){
